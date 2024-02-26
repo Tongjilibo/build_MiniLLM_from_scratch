@@ -5,7 +5,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch
-from bert4torch.models import build_transformer_model, BaseModel
+from bert4torch.models import build_transformer_model, BaseModel, BaseModelDDP
 from bert4torch.snippets import IterDataset, DottableDict, log_info, get_weight_decay_optim_groups
 from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Evaluator
 from bert4torch.optimizers import get_linear_schedule_with_warmup
@@ -18,15 +18,17 @@ import inspect
 
 # 基本参数
 args = DottableDict()
+args.ddp = False
+args.ddp_config = BaseModelDDP.init_process_group() if args.ddp else None
 args.lr = 3e-4
-args.batch_size = 32
+args.batch_size = 8
 args.eval_batch_size = 4
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
 args.max_length = 1024
 args.epochs = 1
 args.weight_decay = 0.1
-args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
+args.data_path = 'F:/data/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = './config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
@@ -72,25 +74,23 @@ train_dataloader = DataLoader(MyDataset(filenames), batch_size=args.batch_size, 
                               drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4) 
 
 # ========================建立模型========================
-def init_model():
-    # model init
-    # model init
-    model_args = dict(
-        dim=1024,
-        n_layers=12,
-        n_heads=8,
-        n_kv_heads=8,
-        vocab_size=64793,
-        multiple_of=32,
-        max_seq_len=1024,
-        dropout=0,
-    )  # start with model_args from command line
-        # init a new model from scratch
-    print("Initializing a new model from scratch")
-    from model import Transformer, ModelArgs
-    gptconf = ModelArgs(**model_args)
-    model = Transformer(gptconf)
-    return model
+# def init_model():
+#     # model init
+#     model_args = dict(
+#         dim=1024,
+#         n_layers=12,
+#         n_heads=8,
+#         n_kv_heads=8,
+#         vocab_size=64793,
+#         multiple_of=32,
+#         max_seq_len=1024,
+#         dropout=0,
+#     )  # start with model_args from command line
+#         # init a new model from scratch
+#     from model import Transformer, ModelArgs
+#     gptconf = ModelArgs(**model_args)
+#     model = Transformer(gptconf)
+#     return model
 
 # class Model(BaseModel):
 #     def __init__(self, *args, **kwargs):
@@ -99,7 +99,11 @@ def init_model():
 #     def forward(self, *inputs, **input_kwargs):
 #         return self.module.forward(*inputs, **input_kwargs)
 # model = Model().to(args.device)
+
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
+if args.ddp:
+    model = BaseModelDDP(model, master_rank=0, device_ids=[args.ddp_config.local_rank], output_device=args.ddp_config.local_rank, find_unused_parameters=False)
+
 model.print_trainable_parameters()
 
 class CrossEntropyLoss(nn.CrossEntropyLoss):
@@ -131,7 +135,7 @@ model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=o
 
 if __name__ == '__main__':
     logger = Logger('./ckpt/log_pretrain.log')
-    evaluator = Checkpoint(monitor='loss', method='step', mode='min', verbose=0, interval=2000, save_dir='./ckpt/{step}', max_save_count=3)
+    evaluator = Checkpoint(monitor='loss', method='step', mode='min', verbose=0, interval=2000, save_dir='./ckpt/{step}_{loss}', max_save_count=3)
     early_stop = EarlyStopping(monitor='loss', verbose=1, patience=3, interval=2000)
     ts_board = Tensorboard('./ckpt/tensorboard')  # tensorboard
 
