@@ -7,9 +7,9 @@ from torch.utils.data import DataLoader, Dataset
 import torch
 from bert4torch.models import build_transformer_model, BaseModel, BaseModelDDP
 from bert4torch.snippets import ListDataset, DottableDict, log_info, get_weight_decay_optim_groups
-from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Evaluator
+from bert4torch.callbacks import Callback, Checkpoint, Logger, EarlyStopping, Tensorboard, Evaluator
 from bert4torch.optimizers import get_linear_schedule_with_warmup
-from tqdm import tqdm
+from collections import deque
 from glob import glob
 import os
 import numpy as np
@@ -33,44 +33,47 @@ args.data_path = 'F:/data/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = './config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-if args.ddp_config is not None:
-    torch.manual_seed(1337 + args.ddp_config.rank)
+
     
 # ========================加载数据集========================
-class MyDataset(Dataset):
-    def __init__(self, filenames):
-        """加载数据"""
-        self.data = []
-        self.index_map = {}
-        self.token_size, self.smp_size = 0, 0
-        for fi, filename in enumerate(filenames):
+args.filenames = glob(args.data_path, recursive=True)
+args.filenames = deque([i for i in args.filenames if 'wudaocorpus' not in i])  # 除去wudao外的140亿tokens
+token_size, smp_size = 0, 0
+for filename in args.filenames:
+    with open(filename,'r') as f:
+        nbytes = f.seek(0,2)
+        flen = f.tell() // np.dtype('uint16').itemsize
+    token_size += flen
+    smp_size += flen//args.max_length
+args.steps_per_epoch = smp_size // (args.batch_size * args.grad_accumulation_steps)
+if args.ddp_config is not None:
+    torch.manual_seed(1337 + args.ddp_config.rank)
+    args.steps_per_epoch = int(args.steps_per_epoch/args.ddp_config.world_size)
+log_info(f'token_size: {token_size}, smp_size: {smp_size}, steps_per_epoch: {args.steps_per_epoch}')
+
+def get_trainloader(args):
+    class MyDataset(ListDataset):
+        def load_data(self, filename):
+            """加载数据，并尽量分为不超过maxlen的句子
+            """
             with open(filename,'r') as f:
-                nbytes = f.seek(0,2)
-                flen = f.tell() // np.dtype('uint16').itemsize
-            self.token_size += flen
-            self.index_map.update({self.smp_size+i:(fi, i) for i in range(flen//args.max_length)})
-            self.smp_size += flen//args.max_length
-            self.data.append(np.memmap(filename, dtype=np.dtype('uint16'),shape=(flen//args.max_length, args.max_length)))
-        log_info(f'token_size: {self.token_size}, smp_size: {self.smp_size}')
+                data=np.fromfile(f,dtype=np.uint16)
+            data = data[:args.max_length*int(len(data)/args.max_length)]
+            data = data.reshape(-1, args.max_length)
+            data = torch.from_numpy(np.array(data).astype(np.int64))
+            return data
+        def __getitem__(self, index):
+            return self.data[index][..., :-1], self.data[index][..., 1:]
 
-    def __len__(self):
-        return self.smp_size
-    
-    def __getitem__(self, index: int):
-        fi, i = self.index_map[index]
-        sample = self.data[fi][i]
-        X = np.array(sample[:-1]).astype(np.int64)
-        Y = np.array(sample[1:]).astype(np.int64)
-        return torch.from_numpy(X), torch.from_numpy(Y)
+    filename = args.filenames.popleft()
+    print(f'=============={len(args.filenames)}===================')
+    dataset = MyDataset(filename)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(dataset) if args.ddp_config is not None else None
+    return DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
+                                drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
+                                sampler=train_sampler) 
 
-dataset = MyDataset([i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i])
-args.steps_per_epoch = dataset.smp_size // (args.batch_size * args.grad_accumulation_steps)
-log_info(f'token_size: {dataset.token_size}, smp_size: {dataset.smp_size}, steps_per_epoch: {args.steps_per_epoch}')
-train_sampler = torch.utils.data.distributed.DistributedSampler(dataset) if args.ddp_config is not None else None
-train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
-                              drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
-                              sampler=train_sampler) 
-
+train_dataloader = get_trainloader(args)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
 
 if args.compile:
@@ -110,6 +113,12 @@ scheduler = get_linear_schedule_with_warmup(optimizer, 5000, args.steps_per_epoc
 model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=optimizer, scheduler=scheduler, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 
+
+class GenTrainLoader(Callback):
+    """自动保存最新模型
+    """
+    def on_dataloader_end(self, logs=None):
+        model.train_dataloader = get_trainloader(args)
 
 if __name__ == '__main__':
     logger = Logger('./ckpt/log_pretrain.log')
