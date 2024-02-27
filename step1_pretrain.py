@@ -18,17 +18,18 @@ import inspect
 
 # 基本参数
 args = DottableDict()
-args.ddp = False
+args.ddp = int(os.environ.get("RANK", -1)) != -1
 args.ddp_config = BaseModelDDP.init_process_group() if args.ddp else None
 args.lr = 3e-4
-args.batch_size = 8
+args.batch_size = 32
 args.eval_batch_size = 4
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
 args.max_length = 1024
 args.epochs = 1
 args.weight_decay = 0.1
-args.data_path = 'F:/data/pretrain_data_bin/**/*.bin'
+args.interval = 2000
+args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = './config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
@@ -73,33 +74,6 @@ class MyDataset(IterDataset):
 train_dataloader = DataLoader(MyDataset(filenames), batch_size=args.batch_size, pin_memory=False, 
                               drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4) 
 
-# ========================建立模型========================
-# def init_model():
-#     # model init
-#     model_args = dict(
-#         dim=1024,
-#         n_layers=12,
-#         n_heads=8,
-#         n_kv_heads=8,
-#         vocab_size=64793,
-#         multiple_of=32,
-#         max_seq_len=1024,
-#         dropout=0,
-#     )  # start with model_args from command line
-#         # init a new model from scratch
-#     from model import Transformer, ModelArgs
-#     gptconf = ModelArgs(**model_args)
-#     model = Transformer(gptconf)
-#     return model
-
-# class Model(BaseModel):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.module = init_model()
-#     def forward(self, *inputs, **input_kwargs):
-#         return self.module.forward(*inputs, **input_kwargs)
-# model = Model().to(args.device)
-
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
 if args.ddp:
     model = BaseModelDDP(model, master_rank=0, device_ids=[args.ddp_config.local_rank], output_device=args.ddp_config.local_rank, find_unused_parameters=False)
@@ -135,11 +109,13 @@ model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=o
 
 if __name__ == '__main__':
     logger = Logger('./ckpt/log_pretrain.log')
-    evaluator = Checkpoint(monitor='loss', method='step', mode='min', verbose=0, interval=2000, save_dir='./ckpt/{step}_{loss}', max_save_count=3)
-    early_stop = EarlyStopping(monitor='loss', verbose=1, patience=3, interval=2000)
+    checkpoint = Checkpoint(monitor='loss', epoch_or_step='step', min_max='min', verbose=0, interval=args.interval, save_dir='./ckpt/{step}_{loss:.4f}', max_save_count=3)
+    early_stop = EarlyStopping(monitor='loss', verbose=1, patience=3*args.interval)
     ts_board = Tensorboard('./ckpt/tensorboard')  # tensorboard
+    callbacks=[checkpoint, logger, ts_board, early_stop]
+    if args.ddp:
+        model.disable_run_callbacks(callbacks)
 
-    model.fit(train_dataloader, steps_per_epoch=args.steps_per_epoch, epochs=args.epochs, 
-              callbacks=[evaluator, logger, ts_board, early_stop])
+    model.fit(train_dataloader, steps_per_epoch=args.steps_per_epoch, epochs=args.epochs, callbacks=callbacks)
 else:
     model.load_weights('./best_model_pretain.pt', strict=False)
