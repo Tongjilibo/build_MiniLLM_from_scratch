@@ -18,8 +18,8 @@ import inspect
 
 # 基本参数
 args = DottableDict()
-args.ddp = int(os.environ.get("RANK", -1)) != -1
-args.ddp_config = BaseModelDDP.init_process_group() if args.ddp else None
+args.compile = False
+args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 3e-4
 args.batch_size = 32
 args.eval_batch_size = 4
@@ -34,7 +34,7 @@ args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = './config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
 
-
+    
 # ========================加载数据集========================
 filenames = glob(args.data_path, recursive=True)
 filenames = [i for i in filenames if 'wudaocorpus' not in i]  # 除去wudao外的140亿tokens
@@ -46,6 +46,9 @@ for filename in filenames:
     token_size += flen
     smp_size += flen//args.max_length
 args.steps_per_epoch = smp_size // (args.batch_size * args.grad_accumulation_steps)
+if args.ddp_config is not None:
+    torch.manual_seed(1337 + args.ddp_config.rank)
+    args.steps_per_epoch = int(args.steps_per_epoch/args.ddp_config.world_size)
 log_info(f'token_size: {token_size}, smp_size: {smp_size}, steps_per_epoch: {args.steps_per_epoch}')
 
 class MyDataset(IterDataset):
@@ -67,15 +70,27 @@ class MyDataset(IterDataset):
                     data=np.fromfile(f,dtype=np.uint16)
                 data = data[:args.max_length*int(len(data)/args.max_length)]
                 data = data.reshape(-1, args.max_length)
-                data = torch.from_numpy(np.array(data).astype(np.int64))
+            data = torch.from_numpy(np.array(data).astype(np.int64))
             for item in data:
                 yield item[..., :-1], item[..., 1:]
+    def __len__(self):
+        return args.steps_per_epoch
 
-train_dataloader = DataLoader(MyDataset(filenames), batch_size=args.batch_size, pin_memory=False, 
-                              drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4) 
+dataset = MyDataset(filenames)
+train_sampler = torch.utils.data.distributed.DistributedSampler(dataset) if args.ddp_config is not None else None
+train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
+                              drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
+                              sampler=train_sampler) 
 
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
-if args.ddp:
+
+if args.compile:
+    print("compiling the model... (takes a ~minute)")
+    model = torch.compile(model)
+
+if args.ddp_config is not None:
+    prefix = "_orig_mod." if args.compile else ""
+    model._ddp_params_and_buffers_to_ignore = {prefix + "freqs_cis"}
     model = BaseModelDDP(model, master_rank=0, device_ids=[args.ddp_config.local_rank], output_device=args.ddp_config.local_rank, find_unused_parameters=False)
 
 model.print_trainable_parameters()
@@ -113,7 +128,7 @@ if __name__ == '__main__':
     early_stop = EarlyStopping(monitor='loss', verbose=1, patience=3*args.interval)
     ts_board = Tensorboard('./ckpt/tensorboard')  # tensorboard
     callbacks=[checkpoint, logger, ts_board, early_stop]
-    if args.ddp:
+    if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
 
     model.fit(train_dataloader, steps_per_epoch=args.steps_per_epoch, epochs=args.epochs, callbacks=callbacks)
