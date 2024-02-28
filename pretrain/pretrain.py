@@ -1,5 +1,7 @@
 #! -*- coding: utf-8 -*-
-
+'''
+预训练
+'''
 import torch.nn as nn
 import torch
 import torch.optim as optim
@@ -22,7 +24,6 @@ args.compile = False
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 3e-4
 args.batch_size = 32
-args.eval_batch_size = 4
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
 args.max_length = 1024
