@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-import torch
+from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModel, BaseModelDDP
 from bert4torch.snippets import ListDataset, DottableDict, log_info, get_weight_decay_optim_groups
 from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Evaluator
@@ -21,7 +21,7 @@ args = DottableDict()
 args.compile = False
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 3e-4
-args.batch_size = 8
+args.batch_size = 32
 args.eval_batch_size = 4
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
@@ -29,13 +29,11 @@ args.max_length = 1024
 args.epochs = 1
 args.weight_decay = 0.1
 args.interval = 2000
-args.data_path = 'F:/data/pretrain_data_bin/**/*.bin'
+args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = './config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-if args.ddp_config is not None:
-    torch.manual_seed(1337 + args.ddp_config.rank)
-    
+
 # ========================加载数据集========================
 class MyDataset(Dataset):
     def __init__(self, filenames):
@@ -50,7 +48,7 @@ class MyDataset(Dataset):
             self.token_size += flen
             self.index_map.update({self.smp_size+i:(fi, i) for i in range(flen//args.max_length)})
             self.smp_size += flen//args.max_length
-            self.data.append(np.memmap(filename, dtype=np.dtype('uint16'),shape=(flen//args.max_length, args.max_length)))
+            self.data.append(np.memmap(filename, dtype=np.dtype('uint16'), shape=(flen//args.max_length, args.max_length)))
         log_info(f'token_size: {self.token_size}, smp_size: {self.smp_size}')
 
     def __len__(self):
@@ -64,12 +62,9 @@ class MyDataset(Dataset):
         return torch.from_numpy(X), torch.from_numpy(Y)
 
 dataset = MyDataset([i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i])
-args.steps_per_epoch = dataset.smp_size // (args.batch_size * args.grad_accumulation_steps)
-log_info(f'token_size: {dataset.token_size}, smp_size: {dataset.smp_size}, steps_per_epoch: {args.steps_per_epoch}')
-train_sampler = torch.utils.data.distributed.DistributedSampler(dataset) if args.ddp_config is not None else None
 train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
                               drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
-                              sampler=train_sampler) 
+                              sampler=DistributedSampler(dataset) if args.ddp_config is not None else None) 
 
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
 
@@ -78,10 +73,7 @@ if args.compile:
     model = torch.compile(model)
 
 if args.ddp_config is not None:
-    prefix = "_orig_mod." if args.compile else ""
-    model._ddp_params_and_buffers_to_ignore = {prefix + "freqs_cis"}
     model = BaseModelDDP(model, master_rank=0, device_ids=[args.ddp_config.local_rank], output_device=args.ddp_config.local_rank, find_unused_parameters=False)
-
 model.print_trainable_parameters()
 
 class CrossEntropyLoss(nn.CrossEntropyLoss):
@@ -106,7 +98,7 @@ use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
 optimizer = optim.AdamW(optim_groups, lr=args.lr, betas=(0.9, 0.95), **extra_args)
 
-scheduler = get_linear_schedule_with_warmup(optimizer, 5000, args.steps_per_epoch*args.epochs)
+scheduler = get_linear_schedule_with_warmup(optimizer, 5000, len(train_dataloader)*args.epochs)
 model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=optimizer, scheduler=scheduler, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 
@@ -120,6 +112,6 @@ if __name__ == '__main__':
     if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
 
-    model.fit(train_dataloader, steps_per_epoch=args.steps_per_epoch, epochs=args.epochs, callbacks=callbacks)
+    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=callbacks)
 else:
     model.load_weights('./best_model_pretain.pt', strict=False)
