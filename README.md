@@ -38,7 +38,7 @@ python infer.py
 ## 3、更新历史
 
 ## 4、预训练
-1. 预训练语料（源于[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)）
+- 预训练语料（源于[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)）
    | 中文预训练语料               | 描述                                      |
    |-------------------------|----------------------------------------|
    | [Wiki中文百科](https://huggingface.co/datasets/pleisto/wikipedia-cn-20230720-filtered)| 中文Wikipedia的数据 |
@@ -49,13 +49,13 @@ python infer.py
 
 项目开源了经过ChatGLM2-6B的分词器处理后的预训练语料，共计**634亿Tokens**的数据量，链接如下：[Corpus](https://pan.baidu.com/s/18o4gF-G68qfgOGWQXgAg3g) 提取码：6unr。将下载好的数据放到./data目录下即可。
 
-1. 预训练权重
+- 预训练权重
    |预训练权重 | 预训练语料         | 模型参数              | 下载地址                       |
    |----------------------------|-------------------------|--------------------------|---------------------|
-   | L12_H1024_A8-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科<br/>+BaiduBaiKe<br/>+shibing624/medical<br/>+C4_zh | max_seq_len=1024<br/>dim=1024<br/>n_layers=12<br/>n_heads=8  | [百度网盘](https://pan.baidu.com/s/1Zvk2Nuf7fsOPKJOk-Tjjcg?pwd=1oel) 提取码:1oel |
+   | L12_H1024_A8-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科<br/>+BaiduBaiKe<br/>+shibing624/medical<br/>+C4_zh | max_seq_len=1024<br/>dim=1024<br/>n_layers=12<br/>n_heads=8  | [百度网盘](https://pan.baidu.com/s/1Zvk2Nuf7fsOPKJOk-Tjjcg?pwd=1oel) 提取码:1oel <br>含权重、log、tensorborad记录|
 
-2. 预训练过程
-
+- 预训练过程
+- 
    ![tensorboard](./docs/pics/tensorboard.png)
 
 ## 5、指令微调（Todo）
