@@ -1,176 +1,126 @@
 #! -*- coding: utf-8 -*-
-# Supervised Finetune
-
-from bert4torch.models import build_transformer_model
-from bert4torch.snippets import sequence_padding, text_segmentate, ListDataset, DottableDict
-from bert4torch.callbacks import Callback, Logger
+'''
+指令微调
+启动命令: nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
+'''
 import torch.nn as nn
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
-import torch
-from bert4torch.models import build_transformer_model
-import json
+from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.distributed import DistributedSampler
+from bert4torch.models import build_transformer_model, BaseModel, BaseModelDDP
+from bert4torch.snippets import ListDataset, DottableDict, log_info, get_weight_decay_optim_groups
+from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Evaluator
+from bert4torch.optimizers import get_linear_schedule_with_warmup
 from glob import glob
-from transformers import AutoTokenizer
-from tqdm import tqdm
-from utils import get_model_config, get_conv_template, get_nbit_lora_model
+import os
+import numpy as np
+import inspect
 
 
 # 基本参数
 args = DottableDict()
-args.max_source_length = 256
-args.max_target_length = 256
-args.max_length = args.max_source_length + args.max_target_length
-args.batch_size = 2
-args.grad_accumulation_steps = 4
-args.lr = 5e-5
+args.compile = False
+args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
+args.lr = 3e-4
+args.batch_size = 32
+args.grad_accumulation_steps = 1
+args.pad_token_id = 0
+args.max_length = 1024
 args.epochs = 1
-args.use_lora = False
-args.load_in_nbit = None
-args.data_path = 'E:/Github/MedicalGPT/data/finetune/**/*.jsonl'
+args.weight_decay = 0.1
+args.interval = 2000
+args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.model_name = 'bloom'
-args.model_type, args.dir_path, args.config_path, args.checkpoint_path = get_model_config(args.model_name)
+args.config_path = '../config/bert4torch_config.json'
 
-tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
-pad_token_id = tokenizer.pad_token_id or -100
+if False:
+    # 不含悟道语料
+    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao'
+    args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i]
+else:
+    # 含悟道语料
+    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao'
+    args.filenames = [i for i in glob(args.data_path, recursive=True)]
 
-def preprocess_function(examples):
-    """
-    Preprocessing the datasets.
-        part of code modified from https://github.com/lm-sys/FastChat
-    """
-    input_ids_list = []
-    targets_list = []
-    roles = ["human", "gpt"]
-    prompt_template = get_conv_template(args.model_name)
+# ========================加载数据集========================
+class MyDataset(Dataset):
+    def __init__(self, filenames):
+        """加载数据"""
+        self.data = []
+        self.index_map = {}
+        self.token_size, self.smp_size = 0, 0
+        for fi, filename in enumerate(filenames):
+            with open(filename,'r') as f:
+                nbytes = f.seek(0,2)
+                flen = f.tell() // np.dtype('uint16').itemsize
+            self.token_size += flen
+            self.index_map.update({self.smp_size+i:(fi, i) for i in range(flen//args.max_length)})
+            self.smp_size += flen//args.max_length
+            self.data.append(np.memmap(filename, dtype=np.dtype('uint16'), shape=(flen//args.max_length, args.max_length)))
+        log_info(f'token_size: {self.token_size}, smp_size: {self.smp_size}')
 
-    def get_dialog(examples):
-        for i, source in enumerate(examples):
-            if len(source) < 2:
-                continue
-            data_role = source[0].get("from", "")
-            if data_role not in roles or data_role != roles[0]:
-                # Skip the first one if it is not from human
-                source = source[1:]
-            if len(source) < 2:
-                continue
-            messages = []
-            for j, sentence in enumerate(source):
-                data_role = sentence.get("from", "")
-                if data_role not in roles:
-                    logger.warning(f"unknown role: {data_role}, {i}. (ignored)")
-                    break
-                if data_role == roles[j % 2]:
-                    messages.append(sentence["value"])
-            if len(messages) < 2 or len(messages) % 2 != 0:
-                continue
-            # Convert the list to pairs of elements
-            history_messages = [[messages[k], messages[k + 1]] for k in range(0, len(messages), 2)]
-            dialog = prompt_template.get_dialog(history_messages)
-            yield dialog
+    def __len__(self):
+        return self.smp_size
+    
+    def __getitem__(self, index: int):
+        fi, i = self.index_map[index]
+        sample = self.data[fi][i]
+        X = np.array(sample[:-1]).astype(np.int64)
+        Y = np.array(sample[1:]).astype(np.int64)
+        return torch.from_numpy(X), torch.from_numpy(Y)
 
-    for dialog in get_dialog(examples):
-        input_ids, labels = [], []
+dataset = MyDataset(args.filenames)
+train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
+                              drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
+                              sampler=DistributedSampler(dataset) if args.ddp_config is not None else None) 
 
-        for i in range(len(dialog) // 2):
-            source_ids = tokenizer.encode(text=dialog[2 * i], add_special_tokens=(i == 0))
-            target_ids = tokenizer.encode(text=dialog[2 * i + 1], add_special_tokens=False)
+model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
+model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))  # 加载预训练权重
 
-            if len(source_ids) > args.max_source_length:
-                source_ids = source_ids[:args.max_source_length]
-            if len(target_ids) > args.max_target_length - 1:  # eos token
-                target_ids = target_ids[:args.max_target_length - 1]
-            if len(source_ids) > 0 and source_ids[0] == tokenizer.eos_token_id:
-                source_ids = source_ids[1:]
-            if len(target_ids) > 0 and target_ids[-1] == tokenizer.eos_token_id:
-                target_ids = target_ids[:-1]
-            if len(input_ids) + len(source_ids) + len(target_ids) + 1 > args.max_length:
-                break
+if args.compile:
+    print("compiling the model... (takes a ~minute)")
+    model = torch.compile(model)
 
-            input_ids += source_ids + target_ids + [tokenizer.eos_token_id]  # add eos token for each turn
-            labels += [pad_token_id] * len(source_ids) + target_ids + [tokenizer.eos_token_id]
-
-        input_ids_list.append(input_ids)
-        targets_list.append(labels)
-
-    return list(zip(input_ids_list, targets_list))
-
-# 加载数据集
-class MyDataset(ListDataset):
-    @staticmethod
-    def load_data(filenames):
-        """加载数据，并尽量分为不超过maxlen的句子
-        """
-        D = []
-        for filename in filenames:
-            with open(filename, encoding='utf-8') as f:
-                for l in f:
-                    D.append(json.loads(l)['conversations'])
-        return preprocess_function(D)
-
-def collate_fn(batch):
-    batch_token_ids, batch_labels = [], []
-    for token_ids, label_ids in batch:
-        batch_token_ids.append(token_ids)
-        batch_labels.append(label_ids)
-
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=pad_token_id), dtype=torch.long, device=args.device)
-    batch_labels = torch.tensor(sequence_padding(batch_labels, value=pad_token_id), dtype=torch.long, device=args.device)
-    return [batch_token_ids], batch_labels
-
-train_dataloader = DataLoader(MyDataset(glob(args.data_path, recursive=True)), batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn) 
-dev_dataloader = DataLoader(MyDataset(glob(args.data_path, recursive=True)), batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn) 
-model = build_transformer_model(config_path=args.config_path, checkpoint_path=args.checkpoint_path, model=args.model_type, add_trainer=True, pad_token_id=pad_token_id,
-                                grad_accumulation_steps=args.grad_accumulation_steps).to(args.device)
-model = get_nbit_lora_model(model, use_lora=args.use_lora, load_in_nbit=args.load_in_nbit).to(args.device)
+if args.ddp_config is not None:
+    model = BaseModelDDP(model, master_rank=0, device_ids=[args.ddp_config.local_rank], output_device=args.ddp_config.local_rank, find_unused_parameters=False)
+model.print_trainable_parameters()
 
 class CrossEntropyLoss(nn.CrossEntropyLoss):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    def forward(self, y_pred, y_true):
+    def forward(self, logits, labels):
         '''
-        y_pred: [btz, seq_len, vocab_size]
-        y_true: token_ids: [btz, seq_len]
+        logits: [btz, seq_len, vocab_size]
+        labels: token_ids: [btz, seq_len]
         '''
-        y_true = y_true[:, 1:]  # 目标token_ids
-        y_pred = y_pred[:, :-1, :]  # 预测序列，错开一位
+        raw_dtyps = logits.dtype
+        logits = logits.to(torch.float32)        
+        logits = logits.reshape(-1, logits.shape[-1])
+        labels = labels.flatten()
+        loss = super().forward(logits, labels)
 
-        y_pred = y_pred.reshape(-1, y_pred.shape[-1])
-        y_true = y_true.flatten()
-        return super().forward(y_pred, y_true)
+        return loss.to(raw_dtyps)
 
-loss_fun = CrossEntropyLoss(ignore_index=pad_token_id)
-model.compile(loss=loss_fun, optimizer=optim.Adam(model.parameters(), args.lr))
+# 创建optimizer
+optim_groups = get_weight_decay_optim_groups(model, weight_decay=args.weight_decay)
+use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
+extra_args = dict(fused=True) if use_fused else dict()
+optimizer = optim.AdamW(optim_groups, lr=args.lr, betas=(0.9, 0.95), **extra_args)
 
-class Evaluator(Callback):
-    """评估与保存
-    """
-    def __init__(self):
-        self.lowest = 1e10
+scheduler = get_linear_schedule_with_warmup(optimizer, 5000, len(train_dataloader)*args.epochs)
+model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=optimizer, scheduler=scheduler, 
+              grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 
-    def on_epoch_end(self, steps, epoch, logs=None):
-        # 保存最优
-        dev_loss = self.evaluate(dev_dataloader)
-        if dev_loss['dev_loss'] <= self.lowest:
-            self.lowest = dev_loss['dev_loss']
-            model.save_weights('./best_model_sft.pt')
-        dev_loss['best_dev_loss'] = self.lowest
-        print(dev_loss)
-
-    def evaluate(self, data):
-        loss, count = 0, 0
-        for input_ids, label in tqdm(data, desc='Evaluating'):
-            pred = model.predict(input_ids)
-            loss += loss_fun(pred, label).item()
-            count += 1
-
-        return {'dev_loss': loss/count}
 
 if __name__ == '__main__':
-    logger = Logger('./log_sft.log')
-    evaluator = Evaluator()
-    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=[evaluator, logger])
-else:
-    model.load_weights('./best_model_sft.pt')
+    logger = Logger(args.save_dir+'/log_sft.log')
+    checkpoint = Checkpoint(monitor='loss', epoch_or_step='step', min_max='min', verbose=0, interval=args.interval, 
+                            save_dir=args.save_dir+'/{step}_{loss:.4f}', max_save_count=5, save_on_train_end=True)
+    early_stop = EarlyStopping(monitor='loss', verbose=1, patience=3*args.interval)
+    ts_board = Tensorboard(args.save_dir+'/tensorboard')  # tensorboard
+    callbacks=[checkpoint, logger, ts_board, early_stop]
+    if args.ddp_config is not None:
+        model.disable_run_callbacks(callbacks)
+
+    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=callbacks)

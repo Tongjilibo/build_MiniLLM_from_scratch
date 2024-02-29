@@ -123,5 +123,3 @@ if __name__ == '__main__':
         model.disable_run_callbacks(callbacks)
 
     model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=callbacks)
-else:
-    model.load_weights('./best_model_pretain.pt', strict=False)
