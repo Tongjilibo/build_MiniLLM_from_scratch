@@ -1,6 +1,7 @@
 #! -*- coding: utf-8 -*-
 '''
 预训练
+启动命令: nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
 '''
 import torch.nn as nn
 import torch
@@ -11,7 +12,6 @@ from bert4torch.models import build_transformer_model, BaseModel, BaseModelDDP
 from bert4torch.snippets import ListDataset, DottableDict, log_info, get_weight_decay_optim_groups
 from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Evaluator
 from bert4torch.optimizers import get_linear_schedule_with_warmup
-from tqdm import tqdm
 from glob import glob
 import os
 import numpy as np
@@ -32,8 +32,16 @@ args.weight_decay = 0.1
 args.interval = 2000
 args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.dir_path = './config'
-args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
+args.config_path = '../config/bert4torch_config.json'
+
+if False:
+    # 不含悟道语料
+    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao'
+    args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i]
+else:
+    # 含悟道语料
+    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao'
+    args.filenames = [i for i in glob(args.data_path, recursive=True)]
 
 # ========================加载数据集========================
 class MyDataset(Dataset):
@@ -62,7 +70,7 @@ class MyDataset(Dataset):
         Y = np.array(sample[1:]).astype(np.int64)
         return torch.from_numpy(X), torch.from_numpy(Y)
 
-dataset = MyDataset([i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i])
+dataset = MyDataset(args.filenames)
 train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
                               drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
                               sampler=DistributedSampler(dataset) if args.ddp_config is not None else None) 
@@ -105,10 +113,11 @@ model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=o
 
 
 if __name__ == '__main__':
-    logger = Logger('./ckpt/log_pretrain.log')
-    checkpoint = Checkpoint(monitor='loss', epoch_or_step='step', min_max='min', verbose=0, interval=args.interval, save_dir='./ckpt/{step}_{loss:.4f}', max_save_count=3)
+    logger = Logger(args.save_dir+'/log_pretrain.log')
+    checkpoint = Checkpoint(monitor='loss', epoch_or_step='step', min_max='min', verbose=0, interval=args.interval, 
+                            save_dir=args.save_dir+'/{step}_{loss:.4f}', max_save_count=5, save_on_train_end=True)
     early_stop = EarlyStopping(monitor='loss', verbose=1, patience=3*args.interval)
-    ts_board = Tensorboard('./ckpt/tensorboard')  # tensorboard
+    ts_board = Tensorboard(args.save_dir+'/tensorboard')  # tensorboard
     callbacks=[checkpoint, logger, ts_board, early_stop]
     if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
