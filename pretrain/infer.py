@@ -16,7 +16,7 @@ args.max_length = 128
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-args.model_path = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao/108000_3.1914/model.pt'
+args.model_path = 'E:/Github/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao/108000_3.1914_model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
