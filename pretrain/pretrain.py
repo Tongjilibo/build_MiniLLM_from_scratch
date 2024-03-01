@@ -22,7 +22,7 @@ import inspect
 args = DottableDict()
 args.compile = False
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
-args.lr = 3e-4
+args.lr = 1.5e-4  # 不含悟道的使用的是3*e-4, 含悟道使用是1.5e-4
 args.batch_size = 32
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
@@ -32,7 +32,8 @@ args.weight_decay = 0.1
 args.interval = 2000
 args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/bert4torch_config.json'
+args.config_path = '/home/hfai/h01305/projects/build_llm_from_scratch/config/bert4torch_config.json'
+args.resume_path = None # '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao/96000_3.2223'
 
 if False:
     # 不含悟道语料
@@ -75,7 +76,8 @@ train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=Fa
                               drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
                               sampler=DistributedSampler(dataset) if args.ddp_config is not None else None) 
 
-model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
+model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
+model.to(args.device)
 
 if args.compile:
     print("compiling the model... (takes a ~minute)")
@@ -111,14 +113,16 @@ scheduler = get_linear_schedule_with_warmup(optimizer, 5000, len(train_dataloade
 model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=optimizer, scheduler=scheduler, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 
+if args.resume_path:
+    mapping = None if args.ddp_config is not None else lambda x: x.replace('module.', '')
+    model.resume_from_checkpoint(args.resume_path, mapping=None)
 
 if __name__ == '__main__':
     logger = Logger(args.save_dir+'/log_pretrain.log')
     checkpoint = Checkpoint(monitor='loss', epoch_or_step='step', min_max='min', verbose=0, interval=args.interval, 
                             save_dir=args.save_dir+'/{step}_{loss:.4f}', max_save_count=5, save_on_train_end=True)
-    early_stop = EarlyStopping(monitor='loss', verbose=1, patience=3*args.interval)
     ts_board = Tensorboard(args.save_dir+'/tensorboard')  # tensorboard
-    callbacks=[checkpoint, logger, ts_board, early_stop]
+    callbacks=[checkpoint, logger, ts_board]
     if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
 
