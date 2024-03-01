@@ -20,7 +20,6 @@ import inspect
 
 # 基本参数
 args = DottableDict()
-args.compile = False
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 1.5e-4  # 不含悟道的使用的是3*e-4, 含悟道使用是1.5e-4
 args.batch_size = 32
@@ -78,10 +77,6 @@ train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=Fa
 
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
 model.to(args.device)
-
-if args.compile:
-    print("compiling the model... (takes a ~minute)")
-    model = torch.compile(model)
 
 if args.ddp_config is not None:
     model = BaseModelDDP(model, master_rank=0, device_ids=[args.ddp_config.local_rank], output_device=args.ddp_config.local_rank, find_unused_parameters=False)
