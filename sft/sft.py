@@ -7,80 +7,52 @@ import torch.nn as nn
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+from data_process import SFTDataset, collate_train_fn
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModel, BaseModelDDP
 from bert4torch.snippets import ListDataset, DottableDict, log_info, get_weight_decay_optim_groups
-from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Evaluator
+from bert4torch.callbacks import Callback, Checkpoint, Logger, EarlyStopping, Tensorboard, Evaluator
 from bert4torch.optimizers import get_linear_schedule_with_warmup
-from glob import glob
+from collections import deque
 import os
 import numpy as np
 import inspect
+from transformers import AutoTokenizer
 
 
 # 基本参数
 args = DottableDict()
-args.compile = False
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
-args.lr = 3e-4
-args.batch_size = 32
+args.lr = 2e-5
+args.batch_size = 4
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
 args.max_length = 1024
 args.epochs = 1
 args.weight_decay = 0.1
 args.interval = 2000
-args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/bert4torch_config.json'
-
-if False:
-    # 不含悟道语料
-    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao'
-    args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i]
-else:
-    # 含悟道语料
-    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao'
-    args.filenames = [i for i in glob(args.data_path, recursive=True)]
+args.config_path = 'E:/Github/build_llm_from_scratch/config/bert4torch_config.json'
+args.model_path = 'E:/Github/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao/108000_3.1914_model.pt'
+args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao-SFT'
+args.filenames = ['F:/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
+                  'F:/data/corpus/sft/common/shibing624@alpaca-zh/Belle_open_source_1M.json']
+args.filenames = deque(args.filenames)
 
 # ========================加载数据集========================
-class MyDataset(Dataset):
-    def __init__(self, filenames):
-        """加载数据"""
-        self.data = []
-        self.index_map = {}
-        self.token_size, self.smp_size = 0, 0
-        for fi, filename in enumerate(filenames):
-            with open(filename,'r') as f:
-                nbytes = f.seek(0,2)
-                flen = f.tell() // np.dtype('uint16').itemsize
-            self.token_size += flen
-            self.index_map.update({self.smp_size+i:(fi, i) for i in range(flen//args.max_length)})
-            self.smp_size += flen//args.max_length
-            self.data.append(np.memmap(filename, dtype=np.dtype('uint16'), shape=(flen//args.max_length, args.max_length)))
-        log_info(f'token_size: {self.token_size}, smp_size: {self.smp_size}')
+tokenizer = AutoTokenizer.from_pretrained('E:/Github/build_llm_from_scratch/config', trust_remote_code=True)
+def get_trainloader(args):
+    filename = args.filenames.popleft()
+    dataset = SFTDataset(filename, tokenizer)
+    train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
+                                drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
+                                sampler=DistributedSampler(dataset) if args.ddp_config is not None else None,
+                                collate_fn=collate_train_fn)
+    return train_dataloader
 
-    def __len__(self):
-        return self.smp_size
-    
-    def __getitem__(self, index: int):
-        fi, i = self.index_map[index]
-        sample = self.data[fi][i]
-        X = np.array(sample[:-1]).astype(np.int64)
-        Y = np.array(sample[1:]).astype(np.int64)
-        return torch.from_numpy(X), torch.from_numpy(Y)
-
-dataset = MyDataset(args.filenames)
-train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
-                              drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
-                              sampler=DistributedSampler(dataset) if args.ddp_config is not None else None) 
-
+train_dataloader = get_trainloader(args)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
 model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))  # 加载预训练权重
-
-if args.compile:
-    print("compiling the model... (takes a ~minute)")
-    model = torch.compile(model)
 
 if args.ddp_config is not None:
     model = BaseModelDDP(model, master_rank=0, device_ids=[args.ddp_config.local_rank], output_device=args.ddp_config.local_rank, find_unused_parameters=False)
@@ -108,11 +80,15 @@ use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
 optimizer = optim.AdamW(optim_groups, lr=args.lr, betas=(0.9, 0.95), **extra_args)
 
-scheduler = get_linear_schedule_with_warmup(optimizer, 5000, len(train_dataloader)*args.epochs)
-model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=optimizer, scheduler=scheduler, 
+model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=optimizer, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 
-
+class GenTrainLoader(Callback):
+    """自动保存最新模型
+    """
+    def on_dataloader_end(self, logs=None):
+        model.train_dataloader = get_trainloader(args)
+    
 if __name__ == '__main__':
     logger = Logger(args.save_dir+'/log_sft.log')
     checkpoint = Checkpoint(monitor='loss', epoch_or_step='step', min_max='min', verbose=0, interval=args.interval, 

@@ -1,31 +1,37 @@
 import json
 import numpy as np
-from tqdm import tqdm
-import pandas as pd
-import os
+from torch.utils.data import DataLoader, Dataset
+import torch
+from bert4torch.snippets import sequence_padding
 
 
-def sft_process():
-    with open('./sft_data/alpaca_gpt4_data_zh.json', 'r', encoding='utf-8') as f:
+MAX_LENGTH = 1024
+PROMPT_MAX_LEN = 512
+ANSWER_MAX_LEN = 512
+
+
+def process_alpaca(data_path):
+    '''alpaca_gpt4_data_zh.json'''
+    with open(data_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    #
-    q_lst = []
-    a_lst = []
+
+    res = []
     for per in data:
         q = per['instruction']
         i = per['input']
         a = per['output']
         q = q + i
-        if len(q) < 10 or len(a) < 5:
+        if len(q) > PROMPT_MAX_LEN or len(a) > ANSWER_MAX_LEN:
             continue
-        if len(q) > 256 or len(a) > 256:
-            continue
-        q_lst.append(q)
-        a_lst.append(a)
+        res.append((q,a))
+    return res
 
-    f = open('./sft_data/Belle_open_source_1M.json', 'r', encoding='utf-8')
 
-    # s
+def process_belle_1m(data_path):
+    '''Belle_open_source_1M.json'''
+    f = open(data_path, 'r', encoding='utf-8')
+    
+    res = []
     while True:
         line = f.readline()
         if not line:
@@ -35,18 +41,56 @@ def sft_process():
         i = per['input']
         a = per['output']
         q = q + i
-        if len(q) < 10 or len(a) < 5:
+        if len(q) > PROMPT_MAX_LEN or len(a) > ANSWER_MAX_LEN:
             continue
-        if len(q) > 256 or len(a) > 256:
-            continue
-        q_lst.append(q)
-        a_lst.append(a)
-    df = pd.DataFrame(columns=['prompt', 'answer'])
-    df['prompt'] = q_lst
-    df['answer'] = a_lst
-    df.to_csv('sft_data/sft_data.csv', index=False)
-    print(df)
+        res.append((q,a))
+    return res
 
-save_dir = './sft_data'
-if not os.path.exists(save_dir): os.makedirs(save_dir)
-sft_process()
+MAPPING = {
+    'alpaca_gpt4_data_zh.json': process_alpaca,
+    'Belle_open_source_1M.json': process_belle_1m
+
+}
+
+class SFTDataset(Dataset):
+    def __init__(self, filename, tokenizer):
+        super().__init__()
+        self.data = self.load_data(filename)
+        self.MAX_LENGTH = MAX_LENGTH
+        self.prompt_max_len = PROMPT_MAX_LEN
+        self.answer_max_len = ANSWER_MAX_LEN
+        self.tokenizer = tokenizer
+        self.bos = self.tokenizer.special_tokens['<bos>']
+        self.eos = self.tokenizer.special_tokens['<eos>']
+        self.pad = 0 # self.tokenizer.special_tokens['<pad>']
+    
+    @staticmethod
+    def load_data(filename):
+        postfix = filename.split('\\')[-1].split('/')[-1]
+        return MAPPING[postfix](filename)
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, index: int):
+        prompt, answer = self.data[index]
+        prompt = self.tokenizer.encode(prompt, add_special_tokens=False)
+        answer = self.tokenizer.encode(answer, add_special_tokens=False)
+        if len(prompt) > self.prompt_max_len:
+            prompt = prompt[:self.prompt_max_len-2]
+        if len(answer) > self.answer_max_len:
+            answer = answer[:self.answer_max_len-2]
+        #
+        input_ids = prompt + [self.bos] + answer + [self.eos]
+        context_length = input_ids.index(self.bos)
+        mask_position = context_length - 1
+        labels = [-100] * context_length + input_ids[mask_position+1:]
+
+        return input_ids, labels
+
+def collate_train_fn(batch):
+    batch_token_ids = [i[0] for i in batch]
+    batch_labels = [i[1] for i in batch]
+    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=0), dtype=torch.long)
+    batch_labels = torch.tensor(sequence_padding(batch_labels, value=-100), dtype=torch.long)
+    return [batch_token_ids[..., :-1]], batch_labels[..., 1:]
