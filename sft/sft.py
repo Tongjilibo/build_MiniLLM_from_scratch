@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 args = DottableDict()
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 2e-5
-args.batch_size = 4
+args.batch_size = 8
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
 args.max_length = 1024
@@ -51,7 +51,8 @@ def get_trainloader(args):
     return train_dataloader
 
 train_dataloader = get_trainloader(args)
-model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True).to(args.device)
+model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
+model.to(args.device)
 model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))  # 加载预训练权重
 
 if args.ddp_config is not None:
@@ -80,7 +81,7 @@ use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
 optimizer = optim.AdamW(optim_groups, lr=args.lr, betas=(0.9, 0.95), **extra_args)
 
-model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=optimizer, 
+model.compile(loss=CrossEntropyLoss(ignore_index=-100), optimizer=optimizer, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 
 class GenTrainLoader(Callback):
@@ -99,4 +100,4 @@ if __name__ == '__main__':
     if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
 
-    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=callbacks)
+    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=[GenTrainLoader]+callbacks)
