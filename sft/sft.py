@@ -100,4 +100,4 @@ if __name__ == '__main__':
     if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
 
-    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=[GenTrainLoader]+callbacks)
+    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=[GenTrainLoader()]+callbacks)
