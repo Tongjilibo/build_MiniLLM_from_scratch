@@ -35,8 +35,13 @@ args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.config_path = 'E:/Github/build_llm_from_scratch/config/bert4torch_config.json'
 args.model_path = 'E:/Github/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao/108000_3.1914_model.pt'
 args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao-SFT'
-args.filenames = ['F:/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
-                  'F:/data/corpus/sft/common/shibing624@alpaca-zh/Belle_open_source_1M.json']
+args.filenames = [
+                    'F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
+                    'F:/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
+                    'F:/data/corpus/sft/common/BelleGroup@train_0.5M_CN/Belle_open_source_0.5M'
+                    'F:/data/corpus/sft/common/BelleGroup@train_1M_CN/Belle_open_source_1M.json',
+                    'F:/data/corpus/sft/common/BelleGroup@school_math_0.25M/school_math_0.25M.json'
+                ]
 args.filenames = deque(args.filenames)
 
 # ========================加载数据集========================

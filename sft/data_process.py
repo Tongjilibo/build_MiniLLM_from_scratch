@@ -6,11 +6,10 @@ from bert4torch.snippets import sequence_padding
 
 
 MAX_LENGTH = 1024
-PROMPT_MAX_LEN = 512
-ANSWER_MAX_LEN = 512
+HUMAN = '<human>'
+ROBOT = '<robot>'
 
-
-def process_alpaca(data_path):
+def process_alpaca(data_path, tokenizer):
     '''alpaca_gpt4_data_zh.json'''
     with open(data_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -20,14 +19,15 @@ def process_alpaca(data_path):
         q = per['instruction']
         i = per['input']
         a = per['output']
-        q = q + i
-        if len(q) > PROMPT_MAX_LEN or len(a) > ANSWER_MAX_LEN:
+        q = tokenizer.encode(HUMAN + q + i + ROBOT, add_special_tokens=False)
+        a = tokenizer.encode(a, add_special_tokens=False)
+        if len(q) + len(a) > MAX_LENGTH-1:
             continue
         res.append((q,a))
     return res
 
 
-def process_belle_1m(data_path):
+def process_belle(data_path, tokenizer):
     '''Belle_open_source_1M.json'''
     f = open(data_path, 'r', encoding='utf-8')
     
@@ -40,51 +40,65 @@ def process_belle_1m(data_path):
         q = per['instruction']
         i = per['input']
         a = per['output']
-        q = q + i
-        if len(q) > PROMPT_MAX_LEN or len(a) > ANSWER_MAX_LEN:
+        q = tokenizer.encode(HUMAN + q + i + ROBOT, add_special_tokens=False)
+        a = tokenizer.encode(a, add_special_tokens=False)
+        if len(q) + len(a) > MAX_LENGTH-1:
             continue
         res.append((q,a))
     return res
 
-MAPPING = {
-    'alpaca_gpt4_data_zh.json': process_alpaca,
-    'Belle_open_source_1M.json': process_belle_1m
+def process_deepctrl(data_path, tokenizer):
+    '''deepctrl-sft-data'''
+    f = open(data_path, 'r', encoding='utf-8')
+    
+    res = []
+    while True:
+        line = f.readline()
+        if not line:
+            break
+        per = json.loads(line)
+        q = per['instruction']
+        i = per['input']
+        a = per['output']
+        h = ''
+        for human, robot in per['history']:
+            h += HUMAN + human + ROBOT + robot
+        q = tokenizer.encode(h + HUMAN + q + i + ROBOT, add_special_tokens=False)
+        a = tokenizer.encode(a, add_special_tokens=False)
+        if len(q) + len(a) > MAX_LENGTH-1:
+            continue
+        res.append((q,a))
+    return res
 
+
+MAPPING = {
+    'alpaca-zh/alpaca_gpt4_data_zh.json': process_alpaca,
+    'train_1M_CN/Belle_open_source_1M.json': process_belle,
+    'train_0.5M_CN/Belle_open_source_0.5M.json': process_belle,
+    'school_math_0.25M/school_math_0.25M.json': process_belle,
+    'deepctrl-sft-data/sft_data_zh.jsonl': process_deepctrl
 }
 
 class SFTDataset(Dataset):
     def __init__(self, filename, tokenizer):
         super().__init__()
-        self.data = self.load_data(filename)
         self.MAX_LENGTH = MAX_LENGTH
-        self.prompt_max_len = PROMPT_MAX_LEN
-        self.answer_max_len = ANSWER_MAX_LEN
         self.tokenizer = tokenizer
-        self.bos = self.tokenizer.special_tokens['<bos>']
         self.eos = self.tokenizer.special_tokens['<eos>']
         self.pad = 0 # self.tokenizer.special_tokens['<pad>']
+        self.data = self.load_data(filename)
     
-    @staticmethod
-    def load_data(filename):
-        postfix = filename.split('\\')[-1].split('/')[-1]
-        return MAPPING[postfix](filename)
+    def load_data(self, filename):
+        postfix = filename.split('@')[-1]
+        return MAPPING[postfix](filename, self.tokenizer)
     
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, index: int):
         prompt, answer = self.data[index]
-        prompt = self.tokenizer.encode(prompt, add_special_tokens=False)
-        answer = self.tokenizer.encode(answer, add_special_tokens=False)
-        if len(prompt) > self.prompt_max_len:
-            prompt = prompt[:self.prompt_max_len-2]
-        if len(answer) > self.answer_max_len:
-            answer = answer[:self.answer_max_len-2]
-        #
-        input_ids = prompt + [self.bos] + answer + [self.eos]
-        context_length = input_ids.index(self.bos)
-        mask_position = context_length - 1
-        labels = [-100] * context_length + input_ids[mask_position+1:]
+        input_ids = prompt + answer + [self.eos]
+        labels = [-100] * len(prompt) + input_ids[len(prompt)+1:]
 
         return input_ids, labels
 
