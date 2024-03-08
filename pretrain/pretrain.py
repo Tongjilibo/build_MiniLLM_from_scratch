@@ -73,7 +73,7 @@ class MyDataset(Dataset):
 
 dataset = MyDataset(args.filenames)
 train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
-                              drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
+                              drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,
                               sampler=DistributedSampler(dataset) if args.ddp_config is not None else None) 
 
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
