@@ -8,6 +8,7 @@ from bert4torch.snippets import sequence_padding
 MAX_LENGTH = 1024
 HUMAN = '<human>'
 ROBOT = '<robot>'
+PAD_TOKEN_ID = 0
 
 def process_alpaca(data_path, tokenizer):
     '''alpaca_gpt4_data_zh.json'''
@@ -85,7 +86,6 @@ class SFTDataset(Dataset):
         self.MAX_LENGTH = MAX_LENGTH
         self.tokenizer = tokenizer
         self.eos = self.tokenizer.special_tokens['<eos>']
-        self.pad = 0 # self.tokenizer.special_tokens['<pad>']
         self.data = self.load_data(filename)
     
     def load_data(self, filename):
@@ -98,13 +98,13 @@ class SFTDataset(Dataset):
     def __getitem__(self, index: int):
         prompt, answer = self.data[index]
         input_ids = prompt + answer + [self.eos]
-        labels = [-100] * len(prompt) + input_ids[len(prompt)+1:]
+        labels = [PAD_TOKEN_ID] * len(prompt) + input_ids[len(prompt):]
 
         return input_ids, labels
 
 def collate_train_fn(batch):
     batch_token_ids = [i[0] for i in batch]
     batch_labels = [i[1] for i in batch]
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=0), dtype=torch.long)
-    batch_labels = torch.tensor(sequence_padding(batch_labels, value=-100), dtype=torch.long)
+    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=PAD_TOKEN_ID), dtype=torch.long)
+    batch_labels = torch.tensor(sequence_padding(batch_labels, value=PAD_TOKEN_ID), dtype=torch.long)
     return [batch_token_ids[..., :-1]], batch_labels[..., 1:]

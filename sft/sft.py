@@ -32,25 +32,25 @@ args.epochs = 1
 args.weight_decay = 0.1
 args.interval = 2000
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = 'E:/Github/build_llm_from_scratch/config/bert4torch_config.json'
-args.model_path = 'E:/Github/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao/108000_3.1914_model.pt'
-args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao-SFT'
+args.config_path = '../config'
+args.model_path = '../ckpt/L12_H1024_A8-NoWudao/108000_3.1914_model.pt'
+args.save_dir = '../ckpt/L12_H1024_A8-Wudao-SFT'
 args.filenames = [
-                    'F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
-                    'F:/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
-                    'F:/data/corpus/sft/common/BelleGroup@train_0.5M_CN/Belle_open_source_0.5M'
-                    'F:/data/corpus/sft/common/BelleGroup@train_1M_CN/Belle_open_source_1M.json',
-                    'F:/data/corpus/sft/common/BelleGroup@school_math_0.25M/school_math_0.25M.json'
+                    '/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
+                    '/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
+                    '/data/corpus/sft/common/BelleGroup@train_0.5M_CN/Belle_open_source_0.5M'
+                    '/data/corpus/sft/common/BelleGroup@train_1M_CN/Belle_open_source_1M.json',
+                    '/data/corpus/sft/common/BelleGroup@school_math_0.25M/school_math_0.25M.json'
                 ]
 args.filenames = deque(args.filenames)
 
 # ========================加载数据集========================
-tokenizer = AutoTokenizer.from_pretrained('E:/Github/build_llm_from_scratch/config', trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
 def get_trainloader(args):
     filename = args.filenames.popleft()
     dataset = SFTDataset(filename, tokenizer)
     train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
-                                drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 4,
+                                drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,
                                 sampler=DistributedSampler(dataset) if args.ddp_config is not None else None,
                                 collate_fn=collate_train_fn)
     return train_dataloader
@@ -101,7 +101,7 @@ if __name__ == '__main__':
                             save_dir=args.save_dir+'/{step}_{loss:.4f}', max_save_count=5, save_on_train_end=True)
     early_stop = EarlyStopping(monitor='loss', verbose=1, patience=3*args.interval)
     ts_board = Tensorboard(args.save_dir+'/tensorboard')  # tensorboard
-    callbacks=[checkpoint, logger, ts_board, early_stop]
+    callbacks=[checkpoint, logger, ts_board]
     if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
 
