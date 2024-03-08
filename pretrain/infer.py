@@ -14,9 +14,9 @@ args.eval_batch_size = 4
 args.pad_token_id = 0
 args.max_length = 128
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.dir_path = '../config'
+args.dir_path = '/home/lb/projects/build_llm_from_scratch/config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-args.model_path = 'E:/Github/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao/108000_3.1914_model.pt'
+args.model_path = '/home/lb/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-Wudao/train_end/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
@@ -30,7 +30,7 @@ generation_config = {
     'end_id': tokenizer.eos_token_id,
     'topk': 40,
     'topp': 0.8,
-    'repetition_penalty': 10,
+    'repetition_penalty': 1.1,
     'mode': 'random_sample', 
     'max_length': args.max_length, 
     'default_rtype': 'logits', 

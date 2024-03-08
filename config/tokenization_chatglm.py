@@ -66,7 +66,6 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
     model_input_names = ["input_ids", "attention_mask", "position_ids"]
 
     def __init__(self, vocab_file, padding_side="left", clean_up_tokenization_spaces=False, **kwargs):
-        super().__init__(padding_side=padding_side, clean_up_tokenization_spaces=clean_up_tokenization_spaces, **kwargs)
         self.name = "GLMTokenizer"
 
         self.vocab_file = vocab_file
@@ -76,6 +75,7 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
             "<eos>": self.tokenizer.eos_id,
             "<pad>": self.tokenizer.pad_id
         }
+        super().__init__(padding_side=padding_side, clean_up_tokenization_spaces=clean_up_tokenization_spaces, **kwargs)
 
     def get_command(self, token):
         if token in self.special_tokens:
@@ -130,13 +130,11 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
     def save_vocabulary(self, save_directory, filename_prefix=None):
         """
         Save the vocabulary and special tokens file to a directory.
-
         Args:
             save_directory (`str`):
                 The directory in which to save the vocabulary.
             filename_prefix (`str`, *optional*):
                 An optional prefix to add to the named of the saved files.
-
         Returns:
             `Tuple(str)`: Paths to the files saved.
         """
@@ -174,16 +172,13 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         """
         Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
         adding special tokens. A BERT sequence has the following format:
-
         - single sequence: `[CLS] X [SEP]`
         - pair of sequences: `[CLS] A [SEP] B [SEP]`
-
         Args:
             token_ids_0 (`List[int]`):
                 List of IDs to which the special tokens will be added.
             token_ids_1 (`List[int]`, *optional*):
                 Optional second list of IDs for sequence pairs.
-
         Returns:
             `List[int]`: List of [input IDs](../glossary#input-ids) with the appropriate special tokens.
         """
@@ -203,19 +198,16 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
     ) -> dict:
         """
         Pad encoded inputs (on left/right and up to predefined length or max length in the batch)
-
         Args:
             encoded_inputs:
                 Dictionary of tokenized inputs (`List[int]`) or batch of tokenized inputs (`List[List[int]]`).
             max_length: maximum length of the returned list and optionally padding length (see below).
                 Will truncate by taking into account the special tokens.
             padding_strategy: PaddingStrategy to use for padding.
-
                 - PaddingStrategy.LONGEST Pad to the longest sequence in the batch
                 - PaddingStrategy.MAX_LENGTH: Pad to the max length (default)
                 - PaddingStrategy.DO_NOT_PAD: Do not pad
                 The tokenizer padding sides are defined in self.padding_side:
-
                     - 'left': pads on the left of the sequences
                     - 'right': pads on the right of the sequences
             pad_to_multiple_of: (optional) Integer if set will pad the sequence to a multiple of the provided value.
