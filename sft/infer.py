@@ -46,12 +46,10 @@ class Chat(ChatLLaMA2Cli):
         return texts
 
     def build_model(self):
-        if (not hasattr(self, 'model')) or (self.model is None):
-            model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
-            model.to(args.device)
-            model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))
-            return model
-        return self.model
+        model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
+        model.to(args.device)
+        model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))
+        return model
 
 if __name__ == '__main__':
     chat = Chat(args.dir_path, generation_config=generation_config)

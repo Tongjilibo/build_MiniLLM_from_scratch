@@ -33,16 +33,30 @@ args.weight_decay = 0.1
 args.interval = 2000
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.config_path = '../config'
-args.model_path = '../ckpt/L12_H1024_A8-NoWudao/108000_3.1914_model.pt'
+args.model_path = '../ckpt/L12_H1024_A8-Wudao/final/model.pt'
 args.save_dir = '../ckpt/L12_H1024_A8-Wudao-SFT'
 args.filenames = [
-                    '/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
-                    '/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
-                    '/data/corpus/sft/common/BelleGroup@train_0.5M_CN/Belle_open_source_0.5M'
-                    '/data/corpus/sft/common/BelleGroup@train_1M_CN/Belle_open_source_1M.json',
-                    '/data/corpus/sft/common/BelleGroup@school_math_0.25M/school_math_0.25M.json'
-                ]
-args.filenames = deque(args.filenames)
+    'shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
+    'BelleGroup@train_0.5M_CN/Belle_open_source_0.5M'
+    'BelleGroup@train_1M_CN/Belle_open_source_1M.json',
+    'BelleGroup@school_math_0.25M/school_math_0.25M.json',
+    'deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
+    'fnlp@moss-002-sft-data/zh_helpfulness.json',
+    'fnlp@moss-002-sft-data/zh_honesty.json',
+    'fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl',
+    'fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl',
+    'shareAI@CodeChat/continue_zh.jsonl',
+    'shareAI@CodeChat/continue_zh_2.jsonl',
+    'shareAI@ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
+    'shareAI@ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
+    'shareAI@ShareGPT-Chinese-English-90k/computer_en_26k(fixed).jsonl',
+    'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k(fixed).jsonl',
+    'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
+    'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
+    'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
+    'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
+    ]
+args.filenames = deque(['F:/data/corpus/sft/common/' + i for i in args.filenames])
 
 # ========================加载数据集========================
 tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
