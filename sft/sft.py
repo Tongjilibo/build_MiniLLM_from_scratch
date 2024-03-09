@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-from data_process import SFTDataset, collate_train_fn
+from data_process import SFTDataset, collate_train_fn, PAD_TOKEN_ID
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModel, BaseModelDDP
 from bert4torch.snippets import ListDataset, DottableDict, log_info, get_weight_decay_optim_groups
@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 args = DottableDict()
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 2e-5
-args.batch_size = 8
+args.batch_size = 4
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
 args.max_length = 1024
@@ -100,7 +100,7 @@ use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
 optimizer = optim.AdamW(optim_groups, lr=args.lr, betas=(0.9, 0.95), **extra_args)
 
-model.compile(loss=CrossEntropyLoss(ignore_index=-100), optimizer=optimizer, 
+model.compile(loss=CrossEntropyLoss(ignore_index=PAD_TOKEN_ID), optimizer=optimizer, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 
 class GenTrainLoader(Callback):
@@ -108,7 +108,8 @@ class GenTrainLoader(Callback):
     """
     def on_dataloader_end(self, logs=None):
         model.train_dataloader = get_trainloader(args)
-    
+
+
 if __name__ == '__main__':
     logger = Logger(args.save_dir+'/log_sft.log')
     checkpoint = Checkpoint(monitor='loss', epoch_or_step='step', min_max='min', verbose=0, interval=args.interval, 
