@@ -24,9 +24,8 @@ from transformers import AutoTokenizer
 args = DottableDict()
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 2e-5
-args.batch_size = 4
+args.batch_size = 8
 args.grad_accumulation_steps = 1
-args.pad_token_id = 0
 args.max_length = 1024
 args.epochs = 1
 args.weight_decay = 0.1
@@ -56,7 +55,7 @@ args.filenames = [
     'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
     'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
     ]
-args.filenames = deque(['F:/data/corpus/sft/common/' + i for i in args.filenames])
+args.filenames = deque(['/data/corpus/sft/common/' + i for i in args.filenames])
 
 # ========================加载数据集========================
 tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
