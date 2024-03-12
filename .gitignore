@@ -2,3 +2,4 @@ logs
 *.log
 ckpt
 .vscode
+__pycache__
