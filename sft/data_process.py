@@ -11,7 +11,6 @@ from bert4torch.snippets import sequence_padding
 import re
 from torch4keras.snippets.log import log_info
 from tqdm import tqdm
-from tqdm import tqdm
 
 
 MAX_LENGTH = 1024
@@ -24,21 +23,29 @@ MAX_SAMPLES = 1000  # None表示不限制，不为None用于测试小样本快�
 
 def get_probable_samples(filenames):
     '''获取可能的训练样本总量'''
-    from itertools import (takewhile, repeat)
+
     total_samples = 0
-    for filename in tqdm(filenames, desc='Get_probable_samples'):
-        try:
+    bar = tqdm(total=len(filenames))
+    for id, filename in enumerate(filenames):
+        bar.n = id + 1
+        bar.refresh()
+        bar.set_description(filename.split('/')[-1])
+
+        if any([n in filename for n in ['alpaca_gpt4_data_zh', 'fnlp@moss-002-sft-data']]):
+            #　json格式文件
             data = json.load(open(filename, 'r', encoding='utf-8'))
-            total_samples += len(data)
-        except:
-            # with open(filename, 'r', encoding='utf-8') as f:
-            #     total_samples += sum(1 for _ in f)
-
-            buffer = 1024 * 1024
-            with open(filename) as f:
-                buf_gen = takewhile(lambda x: x, (f.read(buffer) for _ in repeat(None)))
-                total_samples += sum(buf.count('\n') for buf in buf_gen)
-
+            if MAX_SAMPLES is not None:
+                total_samples += min(len(data), MAX_SAMPLES)
+            else:
+                total_samples += len(data)
+        else:
+            # 每一行一个json文件
+            with open(filename, 'r', encoding='utf-8') as f:
+                for id_, _ in enumerate(f):
+                    if MAX_SAMPLES is not None and id_ >= MAX_SAMPLES:
+                        break
+                    total_samples += 1
+    bar.close()
     log_info(f'probable_total_samples={total_samples}')
     return total_samples
 
@@ -56,6 +63,8 @@ def process_alpaca(data_path, tokenizer):
             continue
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+
+        assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
         if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
             break
@@ -78,6 +87,8 @@ def process_belle(data_path, tokenizer):
             continue
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+
+        assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
         if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
             break
@@ -97,20 +108,22 @@ def process_deepctrl(data_path, tokenizer):
 
         input_ids, labels = [], []
         for human, robot in per['history']:
-            human = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
-            robot = tokenizer.encode(robot, add_special_tokens=False)
+            q = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
+            a = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(human + robot) >= MAX_LENGTH:
+            if len(q + a) >= MAX_LENGTH:
                 break
-            input_ids.extend(human + robot)
-            labels.extend([PAD_TOKEN_ID]*(len(human)-1) + robot + [EOS_TOKEN_ID])
+            input_ids.extend(q + a)
+            labels.extend([PAD_TOKEN_ID]*(len(q)-1) + a + [EOS_TOKEN_ID])
             
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
-        input_ids.extend(q)
         a = tokenizer.encode(per['output'], add_special_tokens=False)
-        labels.extend([PAD_TOKEN_ID]*(len(q)-1) + a)
+        input_ids.extend(q + a)
+        labels.extend([PAD_TOKEN_ID]*(len(q)-1) + a + [EOS_TOKEN_ID])
+        
         if len(input_ids) >= MAX_LENGTH:
             continue
+        assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
         if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
             break
@@ -138,6 +151,7 @@ def process_moss002(data_path, tokenizer):
 
         if len(input_ids) >= MAX_LENGTH:
             continue
+        assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
         if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
             break
@@ -173,6 +187,7 @@ def process_moss003(data_path, tokenizer):
 
         if len(input_ids) >= MAX_LENGTH:
             continue
+        assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
         if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
             break
@@ -204,6 +219,7 @@ def process_shareai(data_path, tokenizer):
 
         if len(input_ids) >= MAX_LENGTH:
             continue
+        assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
         if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
             break
@@ -226,6 +242,7 @@ def process_firefly(data_path, tokenizer):
             continue
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+        assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
         if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
             break
@@ -280,11 +297,13 @@ def collate_train_fn(batch):
 
 
 if __name__ == '__main__':
-    from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
+    get_probable_samples(['F:\data\corpus\sft\common\deepctrl@deepctrl-sft-data/sft_data_zh.jsonl'])
+
+    # from transformers import AutoTokenizer
+    # tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
+    # process_deepctrl('F:\data\corpus\sft\common\deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
     # process_moss002('F:/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
-    # process_moss003_with_tools('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
+    # process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
     # process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-    # process_codechat('F:\data\corpus\sft\common\shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
-    # process_sharegpt('F:\data\corpus\sft\common\shareAI@ShareGPT-Chinese-English-90k\common_zh_70k.jsonl', tokenizer)
-    process_firefly('F:\data\corpus\sft\common\YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
+    # process_shareai('F:\data\corpus\sft\common\shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
+    # process_firefly('F:\data\corpus\sft\common\YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)

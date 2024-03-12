@@ -32,7 +32,7 @@ args.weight_decay = 0.1
 args.interval = 2000
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.config_path = '../config'
-args.model_path = '../ckpt/L12_H1024_A8-WithWudao/final_3.1822/model.pt'
+args.model_path = '../ckpt/L12_H1024_A8-WithWudao/final/model.pt'
 args.save_dir = '../ckpt/L12_H1024_A8-WithWudao-SFT'
 filenames = [
     'shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
@@ -54,7 +54,8 @@ filenames = [
     'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
     'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
     ]
-args.filenames = deque(['/home/hfai/h01305/data/corpus/sft/common/' + i for i in filenames])
+filenames = ['F:/data/corpus/sft/common/' + i for i in filenames]
+args.filenames = deque(filenames)
 args.probable_steps_per_epoch = get_probable_samples(args.filenames) // args.batch_size
 if args.ddp_config is not None:
     args.probable_steps_per_epoch /= args.ddp_config.world_size
@@ -64,7 +65,7 @@ if args.ddp_config is not None:
 tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
 def get_trainloader(args):
     if len(args.filenames) == 0:
-        args.filenames = deque(['/home/hfai/h01305/data/corpus/sft/common/' + i for i in filenames])
+        args.filenames = deque(filenames)
         log_info('all files consumed, start a new epoch')
 
     filename = args.filenames.popleft()
@@ -112,10 +113,6 @@ model.compile(loss=CrossEntropyLoss(ignore_index=PAD_TOKEN_ID), optimizer=optimi
 class GenTrainLoader(Callback):
     """当前dataloader消耗完，自动用下一个文件生成dataloder
     """
-    def on_batch_end(self, global_step: int, local_step: int, logs: dict):
-        if global_step > 495:
-            print()
-
     def on_dataloader_end(self, logs=None):
         model.train_dataloader = get_trainloader(args)
 
