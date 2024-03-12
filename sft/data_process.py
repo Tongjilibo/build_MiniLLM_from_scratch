@@ -9,13 +9,38 @@ from torch.utils.data import DataLoader, Dataset
 import torch
 from bert4torch.snippets import sequence_padding
 import re
+from torch4keras.snippets.log import log_info
 from tqdm import tqdm
+from tqdm import tqdm
+
 
 MAX_LENGTH = 1024
 HUMAN = '<human>'
 ROBOT = '<robot>'
 PAD_TOKEN_ID = 0
 EOS_TOKEN_ID = 2
+MAX_SAMPLES = 1000  # None表示不限制，不为None用于测试小样本快速验证
+
+
+def get_probable_samples(filenames):
+    '''获取可能的训练样本总量'''
+    from itertools import (takewhile, repeat)
+    total_samples = 0
+    for filename in tqdm(filenames, desc='Get_probable_samples'):
+        try:
+            data = json.load(open(filename, 'r', encoding='utf-8'))
+            total_samples += len(data)
+        except:
+            # with open(filename, 'r', encoding='utf-8') as f:
+            #     total_samples += sum(1 for _ in f)
+
+            buffer = 1024 * 1024
+            with open(filename) as f:
+                buf_gen = takewhile(lambda x: x, (f.read(buffer) for _ in repeat(None)))
+                total_samples += sum(buf.count('\n') for buf in buf_gen)
+
+    log_info(f'probable_total_samples={total_samples}')
+    return total_samples
 
 
 def process_alpaca(data_path, tokenizer):
@@ -32,6 +57,8 @@ def process_alpaca(data_path, tokenizer):
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
         res.append((input_ids, labels))
+        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+            break
     return res
 
 
@@ -52,6 +79,8 @@ def process_belle(data_path, tokenizer):
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
         res.append((input_ids, labels))
+        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+            break
     return res
 
 
@@ -83,6 +112,8 @@ def process_deepctrl(data_path, tokenizer):
         if len(input_ids) >= MAX_LENGTH:
             continue
         res.append((input_ids, labels))
+        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+            break
     return res
 
 
@@ -108,6 +139,8 @@ def process_moss002(data_path, tokenizer):
         if len(input_ids) >= MAX_LENGTH:
             continue
         res.append((input_ids, labels))
+        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+            break
     return res
 
 
@@ -141,6 +174,8 @@ def process_moss003(data_path, tokenizer):
         if len(input_ids) >= MAX_LENGTH:
             continue
         res.append((input_ids, labels))
+        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+            break
     return res
 
 
@@ -170,6 +205,8 @@ def process_shareai(data_path, tokenizer):
         if len(input_ids) >= MAX_LENGTH:
             continue
         res.append((input_ids, labels))
+        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+            break
     return res
 
 
@@ -190,6 +227,8 @@ def process_firefly(data_path, tokenizer):
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
         res.append((input_ids, labels))
+        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+            break
     return res
 
 
