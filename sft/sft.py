@@ -58,7 +58,7 @@ filenames = ['/data/corpus/sft/common/' + i for i in filenames]
 args.filenames = deque(filenames)
 args.probable_steps_per_epoch = get_probable_samples(args.filenames) // args.batch_size
 if args.ddp_config is not None:
-    args.probable_steps_per_epoch /= args.ddp_config.world_size
+    args.probable_steps_per_epoch = args.probable_steps_per_epoch // args.ddp_config.world_size
 
 
 # ========================加载数据集========================
