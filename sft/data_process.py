@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 import torch
 from bert4torch.snippets import sequence_padding
 import re
-from torch4keras.snippets.log import log_info
+from torch4keras.snippets.log import log_info, log_warn
 from tqdm import tqdm
 
 
@@ -19,6 +19,8 @@ ROBOT = '<robot>'
 PAD_TOKEN_ID = 0
 EOS_TOKEN_ID = 2
 MAX_SAMPLES = 1000  # None表示不限制，不为None用于测试小样本快速验证
+if MAX_SAMPLES is not None:
+    log_warn(f'Only use {MAX_SAMPLES} samples for each sft file')
 
 
 def get_probable_samples(filenames):
@@ -111,7 +113,7 @@ def process_deepctrl(data_path, tokenizer):
             q = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
             a = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(q + a) >= MAX_LENGTH:
+            if len(input_ids + q + a) >= MAX_LENGTH:
                 break
             input_ids.extend(q + a)
             labels.extend([PAD_TOKEN_ID]*(len(q)-1) + a + [EOS_TOKEN_ID])
@@ -137,14 +139,14 @@ def process_moss002(data_path, tokenizer):
 
     res = []
     for per in data:
-        history = re.split('<eoh> \[MOSS\]: |<eoa> \[Human\]: |\[Human\]: |<eoa>', per['plain_text'])
+        history = re.split(r'<eoh> \[MOSS\]: |<eoa> \[Human\]: |\[Human\]: |<eoa>', per['plain_text'])
         history = [i.strip() for i in history if i]
         input_ids, labels = [], []
         for human, robot in zip(history[0::2], history[1::2]):
             human = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
             robot = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(human + robot) >= MAX_LENGTH:
+            if len(input_ids + human + robot) >= MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
             labels.extend([PAD_TOKEN_ID]*(len(human)-1) + robot + [EOS_TOKEN_ID])
@@ -175,12 +177,12 @@ def process_moss003(data_path, tokenizer):
 
             human = turn['Human'].replace('<|Human|>: ', '').replace('<eoh>\n', '')
             robot = turn['MOSS'].replace('<|MOSS|>: ', '').replace('<eom>\n', '')
-            robot = re.sub('<sup><\|[0-9]+\|></sup>', '', robot).strip()
+            robot = re.sub(r'<sup><\|[0-9]+\|></sup>', '', robot).strip()
 
             human = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
             robot = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(human + robot) >= MAX_LENGTH:
+            if len(input_ids + human + robot) >= MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
             labels.extend([PAD_TOKEN_ID]*(len(human)-1) + robot + [EOS_TOKEN_ID])
@@ -212,7 +214,7 @@ def process_shareai(data_path, tokenizer):
             human = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
             robot = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(human + robot) >= MAX_LENGTH:
+            if len(input_ids + human + robot) >= MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
             labels.extend([PAD_TOKEN_ID]*(len(human)-1) + robot + [EOS_TOKEN_ID])
@@ -297,13 +299,13 @@ def collate_train_fn(batch):
 
 
 if __name__ == '__main__':
-    get_probable_samples(['F:\data\corpus\sft\common\deepctrl@deepctrl-sft-data/sft_data_zh.jsonl'])
+    get_probable_samples(['F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl'])
 
     # from transformers import AutoTokenizer
     # tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
-    # process_deepctrl('F:\data\corpus\sft\common\deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
+    # process_deepctrl('F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
     # process_moss002('F:/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
     # process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
     # process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-    # process_shareai('F:\data\corpus\sft\common\shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
-    # process_firefly('F:\data\corpus\sft\common\YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
+    # process_shareai('F:/data/corpus/sft/common/shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
+    # process_firefly('F:/data/corpus/sft/common/YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)

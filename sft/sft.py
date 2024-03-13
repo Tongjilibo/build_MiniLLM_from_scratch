@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 '''
 指令微调
-启动命令: nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
+启动命令: torchrun --standalone --nproc_per_node=4 sft.py
 '''
 import torch.nn as nn
 import torch
@@ -54,7 +54,7 @@ filenames = [
     'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
     'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
     ]
-filenames = ['F:/data/corpus/sft/common/' + i for i in filenames]
+filenames = ['/data/corpus/sft/common/' + i for i in filenames]
 args.filenames = deque(filenames)
 args.probable_steps_per_epoch = get_probable_samples(args.filenames) // args.batch_size
 if args.ddp_config is not None:
@@ -69,6 +69,7 @@ def get_trainloader(args):
         log_info('all files consumed, start a new epoch')
 
     filename = args.filenames.popleft()
+    # print(filename)
     dataset = SFTDataset(filename, tokenizer)
     train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
                                 drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,

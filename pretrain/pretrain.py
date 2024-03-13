@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 '''
 预训练
-启动命令: nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
+启动命令: torchrun --standalone --nproc_per_node=4 pretrain.py
 '''
 import torch.nn as nn
 import torch
