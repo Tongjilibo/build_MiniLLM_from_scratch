@@ -68,7 +68,7 @@ def process_alpaca(data_path, tokenizer):
 
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
-        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
             break
     return res
 
