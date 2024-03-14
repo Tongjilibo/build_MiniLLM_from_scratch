@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-from data_process import SFTDataset, collate_train_fn, PAD_TOKEN_ID, get_probable_samples
+from data_process import SFTDataset, collate_train_fn, PAD_TOKEN_ID
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModel, BaseModelDDP
 from bert4torch.snippets import ListDataset, DottableDict, log_info, get_weight_decay_optim_groups
@@ -24,10 +24,10 @@ from transformers import AutoTokenizer
 args = DottableDict()
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 2e-5
-args.batch_size = 8
+args.batch_size = 28
 args.grad_accumulation_steps = 1
 args.max_length = 1024
-args.epochs = 1
+args.epochs = 5
 args.weight_decay = 0.1
 args.interval = 2000
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -38,46 +38,33 @@ filenames = [
     'shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
     'BelleGroup@train_0.5M_CN/Belle_open_source_0.5M.json',
     'BelleGroup@train_1M_CN/Belle_open_source_1M.json',
-    'BelleGroup@school_math_0.25M/school_math_0.25M.json',
-    'deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
-    'fnlp@moss-002-sft-data/zh_helpfulness.json',
-    'fnlp@moss-002-sft-data/zh_honesty.json',
-    'fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl',
-    'fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl',
-    'shareAI@CodeChat/continue_zh.jsonl',
-    'shareAI@CodeChat/continue_zh_2.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k(fixed).jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
+    # 'BelleGroup@school_math_0.25M/school_math_0.25M.json',
+    # 'deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
+    # 'fnlp@moss-002-sft-data/zh_helpfulness.json',
+    # 'fnlp@moss-002-sft-data/zh_honesty.json',
+    # 'fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl',
+    # 'fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl',
+    # 'shareAI@CodeChat/continue_zh.jsonl',
+    # 'shareAI@CodeChat/continue_zh_2.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k(fixed).jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
     'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
     ]
-filenames = ['/data/corpus/sft/common/' + i for i in filenames]
-args.filenames = deque(filenames)
-args.probable_steps_per_epoch = get_probable_samples(args.filenames) // args.batch_size
-if args.ddp_config is not None:
-    args.probable_steps_per_epoch = args.probable_steps_per_epoch // args.ddp_config.world_size
-
+filenames = ['/home/hfai/h01305/data/corpus/sft/common/' + i for i in filenames]
 
 # ========================加载数据集========================
 tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
-def get_trainloader(args):
-    if len(args.filenames) == 0:
-        args.filenames = deque(filenames)
-        log_info('all files consumed, start a new epoch')
 
-    filename = args.filenames.popleft()
-    print('[Current file] ', filename)
-    dataset = SFTDataset(filename, tokenizer)
-    train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
-                                drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,
-                                sampler=DistributedSampler(dataset) if args.ddp_config is not None else None,
-                                collate_fn=collate_train_fn)
-    return train_dataloader
+dataset = SFTDataset(filenames, tokenizer)
+train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
+                            drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,
+                            sampler=DistributedSampler(dataset) if args.ddp_config is not None else None,
+                            collate_fn=collate_train_fn)
 
-train_dataloader = get_trainloader(args)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
 model.to(args.device)
 model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))  # 加载预训练权重
@@ -108,14 +95,9 @@ use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
 optimizer = optim.AdamW(optim_groups, lr=args.lr, betas=(0.9, 0.95), **extra_args)
 
-model.compile(loss=CrossEntropyLoss(ignore_index=PAD_TOKEN_ID), optimizer=optimizer, 
+scheduler = get_linear_schedule_with_warmup(optimizer, 5000, len(train_dataloader)*args.epochs)
+model.compile(loss=CrossEntropyLoss(ignore_index=PAD_TOKEN_ID), optimizer=optimizer, scheduler=scheduler, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
-
-class GenTrainLoader(Callback):
-    """当前dataloader消耗完，自动用下一个文件生成dataloder
-    """
-    def on_dataloader_end(self, logs=None):
-        model.train_dataloader = get_trainloader(args)
 
 
 if __name__ == '__main__':
@@ -128,4 +110,4 @@ if __name__ == '__main__':
     if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
 
-    model.fit(train_dataloader, steps_per_epoch=args.probable_steps_per_epoch, epochs=args.epochs, callbacks=[GenTrainLoader()]+callbacks)
+    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=callbacks)
