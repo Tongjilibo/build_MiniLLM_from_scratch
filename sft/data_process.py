@@ -11,6 +11,9 @@ from bert4torch.snippets import sequence_padding
 import re
 from torch4keras.snippets.log import log_info, log_warn
 from tqdm import tqdm
+import os
+import pickle
+import random
 
 
 MAX_LENGTH = 1024
@@ -274,16 +277,32 @@ MAPPING = {
 }
 
 class SFTDataset(Dataset):
-    def __init__(self, filename, tokenizer):
+    def __init__(self, filenames, tokenizer, save_path='../sft_data/sft_data.pkl'):
         super().__init__()
         self.MAX_LENGTH = MAX_LENGTH
         self.tokenizer = tokenizer
-        self.data = self.load_data(filename)
+        self.save_path = save_path
+        self.data = self.load_data(filenames)
     
-    def load_data(self, filename):
-        postfix = filename.split('@')[-1]
-        return MAPPING[postfix](filename, self.tokenizer)
-    
+    def load_data(self, filenames):
+        if os.path.exists(self.save_path):
+            # 加载
+            with open(self.save_path, 'rb') as f:
+                all_res = pickle.load(f)
+        else:
+            all_res = []
+            for filename in tqdm(filenames):
+                postfix = filename.split('@')[-1]
+                all_res.extend(MAPPING[postfix](filename, self.tokenizer))
+            random.shuffle(all_res)
+
+            # 保存
+            os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
+            with open(self.save_path, 'wb') as f:
+                pickle.dump(all_res, f)
+        log_info(f'Training samples: {len(all_res)}')
+        return all_res
+
     def __len__(self):
         return len(self.data)
     
@@ -299,13 +318,15 @@ def collate_train_fn(batch):
 
 
 if __name__ == '__main__':
-    get_probable_samples(['F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl'])
+    # 获取可能
+    # get_probable_samples(['F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl'])
 
-    # from transformers import AutoTokenizer
-    # tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
-    # process_deepctrl('F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
-    # process_moss002('F:/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
-    # process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
-    # process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-    # process_shareai('F:/data/corpus/sft/common/shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
-    # process_firefly('F:/data/corpus/sft/common/YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
+    # 测试各个文件的处理
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
+    process_deepctrl('F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
+    process_moss002('F:/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
+    process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
+    process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
+    process_shareai('F:/data/corpus/sft/common/shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
+    process_firefly('F:/data/corpus/sft/common/YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)

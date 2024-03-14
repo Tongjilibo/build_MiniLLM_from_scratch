@@ -11,14 +11,11 @@ from transformers import AutoTokenizer
 from data_process import HUMAN, ROBOT
 
 args = DottableDict()
-args.compile = False
-args.eval_batch_size = 4
-args.pad_token_id = 0
-args.max_length = 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-args.model_path = '../ckpt/L12_H1024_A8-Wudao-SFT/final_1.1675/model.pt'
+args.model_path = '../ckpt/L12_H1024_A8-WithWudao-SFT/6000_2.7145/model.pt'
+args.use_history = False
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 
@@ -30,7 +27,7 @@ generation_config = {
     'topp': 0.8,
     'repetition_penalty': 1.1,
     'mode': 'random_sample', 
-    'max_length': args.max_length, 
+    'max_length': 1024, 
     'default_rtype': 'logits', 
     'use_states': True,
     'include_input': False
@@ -39,8 +36,9 @@ generation_config = {
 class Chat(ChatLLaMA2Cli):
     def build_prompt(self, query, history) -> str:
         texts = ''
-        for user_input, response in history:
-            texts += f'{HUMAN}{user_input}{ROBOT}{response}'
+        if args.use_history:
+            for user_input, response in history:
+                texts += f'{HUMAN}{user_input}{ROBOT}{response}'
 
         texts += f'{HUMAN}{query}{ROBOT}'
         return texts
