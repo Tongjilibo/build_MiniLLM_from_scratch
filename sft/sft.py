@@ -27,7 +27,7 @@ args.lr = 2e-5
 args.batch_size = 8
 args.grad_accumulation_steps = 1
 args.max_length = 1024
-args.epochs = 1
+args.epochs = 2
 args.weight_decay = 0.1
 args.interval = 2000
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -39,26 +39,26 @@ filenames = [
     'BelleGroup@train_0.5M_CN/Belle_open_source_0.5M.json',
     'BelleGroup@train_1M_CN/Belle_open_source_1M.json',
     'BelleGroup@school_math_0.25M/school_math_0.25M.json',
-    'deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
-    'fnlp@moss-002-sft-data/zh_helpfulness.json',
-    'fnlp@moss-002-sft-data/zh_honesty.json',
-    'fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl',
-    'fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl',
-    'shareAI@CodeChat/continue_zh.jsonl',
-    'shareAI@CodeChat/continue_zh_2.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k(fixed).jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
-    'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
-    'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
+    # 'deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
+    # 'fnlp@moss-002-sft-data/zh_helpfulness.json',
+    # 'fnlp@moss-002-sft-data/zh_honesty.json',
+    # 'fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl',
+    # 'fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl',
+    # 'shareAI@CodeChat/continue_zh.jsonl',
+    # 'shareAI@CodeChat/continue_zh_2.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k(fixed).jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
+    # 'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
+    # 'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
     ]
-filenames = ['/data/corpus/sft/common/' + i for i in filenames]
+filenames = ['/home/hfai/h01305/data/corpus/sft/common/' + i for i in filenames]
 args.filenames = deque(filenames)
 args.probable_steps_per_epoch = get_probable_samples(args.filenames) // args.batch_size
 if args.ddp_config is not None:
-    args.probable_steps_per_epoch /= args.ddp_config.world_size
+    args.probable_steps_per_epoch = args.probable_steps_per_epoch // args.ddp_config.world_size
 
 
 # ========================加载数据集========================
@@ -69,7 +69,7 @@ def get_trainloader(args):
         log_info('all files consumed, start a new epoch')
 
     filename = args.filenames.popleft()
-    # print(filename)
+    print('[Current file] ', filename)
     dataset = SFTDataset(filename, tokenizer)
     train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
                                 drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,

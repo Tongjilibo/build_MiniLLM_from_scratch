@@ -18,7 +18,7 @@ HUMAN = '<human>'
 ROBOT = '<robot>'
 PAD_TOKEN_ID = 0
 EOS_TOKEN_ID = 2
-MAX_SAMPLES = 1000  # None表示不限制，不为None用于测试小样本快速验证
+MAX_SAMPLES = None  # None表示不限制，不为None用于测试小样本快速验证
 if MAX_SAMPLES is not None:
     log_warn(f'Only use {MAX_SAMPLES} samples for each sft file')
 
@@ -68,7 +68,7 @@ def process_alpaca(data_path, tokenizer):
 
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
-        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
             break
     return res
 
@@ -92,7 +92,7 @@ def process_belle(data_path, tokenizer):
 
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
-        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
             break
     return res
 
@@ -127,7 +127,7 @@ def process_deepctrl(data_path, tokenizer):
             continue
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
-        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
             break
     return res
 
@@ -155,7 +155,7 @@ def process_moss002(data_path, tokenizer):
             continue
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
-        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
             break
     return res
 
@@ -191,7 +191,7 @@ def process_moss003(data_path, tokenizer):
             continue
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
-        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
             break
     return res
 
@@ -223,7 +223,7 @@ def process_shareai(data_path, tokenizer):
             continue
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
-        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
             break
     return res
 
@@ -246,7 +246,7 @@ def process_firefly(data_path, tokenizer):
         labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
-        if (MAX_LENGTH is not None) and (len(res) >= MAX_SAMPLES):
+        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
             break
     return res
 
