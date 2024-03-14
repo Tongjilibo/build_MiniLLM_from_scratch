@@ -69,7 +69,7 @@ def get_trainloader(args):
         log_info('all files consumed, start a new epoch')
 
     filename = args.filenames.popleft()
-    # print(filename)
+    print('[Current file] ', filename)
     dataset = SFTDataset(filename, tokenizer)
     train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
                                 drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,
