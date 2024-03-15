@@ -291,7 +291,7 @@ class SFTDataset(Dataset):
                 all_res = pickle.load(f)
         else:
             all_res = []
-            for filename in tqdm(filenames):
+            for filename in tqdm(filenames, desc='Load data'):
                 postfix = filename.split('@')[-1]
                 all_res.extend(MAPPING[postfix](filename, self.tokenizer))
             random.shuffle(all_res)

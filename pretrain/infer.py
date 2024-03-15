@@ -9,14 +9,11 @@ from bert4torch.snippets import DottableDict
 from transformers import AutoTokenizer
 
 args = DottableDict()
-args.compile = False
-args.eval_batch_size = 4
-args.pad_token_id = 0
-args.max_length = 128
+args.max_length = 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.dir_path = '/home/lb/projects/build_llm_from_scratch/config'
+args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-args.model_path = '/home/lb/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-Wudao/train_end/model.pt'
+args.model_path = '../ckpt/L12_H1024_A8-WithWudao/final/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)

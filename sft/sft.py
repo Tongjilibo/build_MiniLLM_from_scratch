@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 args = DottableDict()
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 2e-5
-args.batch_size = 28
+args.batch_size = 8
 args.grad_accumulation_steps = 1
 args.max_length = 1024
 args.epochs = 5
@@ -36,8 +36,8 @@ args.model_path = '../ckpt/L12_H1024_A8-WithWudao/final/model.pt'
 args.save_dir = '../ckpt/L12_H1024_A8-WithWudao-SFT'
 filenames = [
     'shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
-    'BelleGroup@train_0.5M_CN/Belle_open_source_0.5M.json',
-    'BelleGroup@train_1M_CN/Belle_open_source_1M.json',
+    # 'BelleGroup@train_0.5M_CN/Belle_open_source_0.5M.json',
+    # 'BelleGroup@train_1M_CN/Belle_open_source_1M.json',
     # 'BelleGroup@school_math_0.25M/school_math_0.25M.json',
     # 'deepctrl@deepctrl-sft-data/sft_data_zh.jsonl',
     # 'fnlp@moss-002-sft-data/zh_helpfulness.json',
@@ -52,9 +52,9 @@ filenames = [
     # 'shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
     # 'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
     # 'shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
-    'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
+    # 'YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl'
     ]
-filenames = ['/home/hfai/h01305/data/corpus/sft/common/' + i for i in filenames]
+filenames = ['/data/corpus/sft/common/' + i for i in filenames]
 
 # ========================加载数据集========================
 tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
@@ -95,7 +95,8 @@ use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
 optimizer = optim.AdamW(optim_groups, lr=args.lr, betas=(0.9, 0.95), **extra_args)
 
-scheduler = get_linear_schedule_with_warmup(optimizer, 5000, len(train_dataloader)*args.epochs)
+total_steps = len(train_dataloader)*args.epochs
+scheduler = get_linear_schedule_with_warmup(optimizer, min(5000, int(0.1*total_steps)), total_steps)
 model.compile(loss=CrossEntropyLoss(ignore_index=PAD_TOKEN_ID), optimizer=optimizer, scheduler=scheduler, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 
