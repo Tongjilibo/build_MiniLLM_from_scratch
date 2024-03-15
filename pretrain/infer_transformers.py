@@ -31,8 +31,10 @@ if __name__ == '__main__':
             history = []
             os.system(clear_command)
             continue
-        inputs = tokenizer(query, return_tensors='pt').to(device)
-        response = model.generate(**inputs)
+        inputs = tokenizer.encode(query, return_tensors='pt', add_special_tokens=False).to(device)
+        response = model.generate(inputs)
+        response = tokenizer.decode(response[0].cpu(), skip_special_tokens=True)
+
         os.system(clear_command)
         print(build_prompt(history + [(query, response)]), flush=True)
         os.system(clear_command)

@@ -2,7 +2,5 @@
   "_from_model_config": true,
   "bos_token_id": 1,
   "eos_token_id": 2,
-  "pad_token_id": 0,
-  "do_sample": true,
-  "transformers_version": "4.29.0.dev0"
+  "pad_token_id": 0
 }

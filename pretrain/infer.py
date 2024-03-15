@@ -9,7 +9,7 @@ from bert4torch.snippets import DottableDict
 from transformers import AutoTokenizer
 
 args = DottableDict()
-args.max_length = 1024
+args.max_length = 256  # 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
