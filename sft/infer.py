@@ -11,7 +11,6 @@ from transformers import AutoTokenizer
 from data_process import HUMAN, ROBOT
 
 args = DottableDict()
-args.compile = False
 args.max_length = 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
