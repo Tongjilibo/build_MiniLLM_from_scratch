@@ -16,6 +16,7 @@
   - 训练的checkpoint可以直接使用`transformers`包进行推理
   - 优化了训练时候内存占用；
   - 提供了完整训练log供复现比对
+- **声明**: 本实验训练出来的模型，目前只具备简单的聊天功能（受限于语料大小、模型规模、sft语料大小和质量），不具备回答复杂问题的能力。
 
 ## 2. 快速开始
 - 环境安装
@@ -24,6 +25,9 @@ pip install bert4torch==0.4.9
 ```
 - 脚本说明
 ```shell
+# 为防止terminal关闭，可以使用nohup, tmux, screen方式来启动
+# eg. nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
+
 # 预训练
 cd pretrain
 nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
@@ -58,7 +62,7 @@ python convert.py
 | [WuDaoCorpora](https://data.baai.ac.cn/details/WuDaoCorporaText) | 中文悟道开源的200G数据|
 | [shibing624/medical](https://huggingface.co/datasets/shibing624/medical/tree/main)| 源自shibing624的一部分医学领域的预训练数据 |
 
-项目开源了经过ChatGLM2-6B的分词器处理后的预训练语料，共计**634亿Tokens**的数据量，链接如下：[Corpus](https://pan.baidu.com/s/18o4gF-G68qfgOGWQXgAg3g) 提取码：6unr。将下载好的数据放到./data目录下即可。
+项目开源了经过ChatGLM2-6B的分词器处理后的预训练语料，共计**634亿Tokens**的数据量，链接如下：[Corpus](https://pan.baidu.com/s/18o4gF-G68qfgOGWQXgAg3g) 提取码：6unr。
 
 ### 4.2 预训练权重
 |预训练权重 | 预训练语料                    | 下载地址                       |
