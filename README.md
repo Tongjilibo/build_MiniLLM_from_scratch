@@ -1,11 +1,10 @@
-# build_miniLLM_from_scratch
+# build_MiniLLM_from_scratch
 
-[![licence](https://img.shields.io/github/license/Tongjilibo/build_miniLLM_from_scratch.svg?maxAge=3600)](https://github.com/Tongjilibo/build_miniLLM_from_scratch/blob/master/LICENSE)
-[![GitHub release](https://img.shields.io/github/release/Tongjilibo/build_miniLLM_from_scratch.svg?maxAge=3600)](https://github.com/Tongjilibo/build_miniLLM_from_scratch/releases)
-[![GitHub stars](https://img.shields.io/github/stars/Tongjilibo/build_miniLLM_from_scratch?style=social)](https://github.com/Tongjilibo/build_miniLLM_from_scratch)
-[![GitHub Issues](https://img.shields.io/github/issues/Tongjilibo/build_miniLLM_from_scratch.svg)](https://github.com/Tongjilibo/build_miniLLM_from_scratch/issues)
-[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Tongjilibo/build_miniLLM_from_scratch/issues)
-[![Generic badge](https://img.shields.io/badge/wechat-join-green.svg?logo=wechat)](https://github.com/Tongjilibo/build_miniLLM_from_scratch/blob/master/docs/pics/wechat_group.jpg)
+[![licence](https://img.shields.io/github/license/Tongjilibo/build_MiniLLM_from_scratch.svg?maxAge=3600)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/Tongjilibo/build_MiniLLM_from_scratch?style=social)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch)
+[![GitHub Issues](https://img.shields.io/github/issues/Tongjilibo/build_MiniLLM_from_scratch.svg)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/issues)
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/issues)
+[![Generic badge](https://img.shields.io/badge/wechat-join-green.svg?logo=wechat)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/blob/master/docs/pics/wechat_group.jpg)
 
 [Bert4torch](https://github.com/Tongjilibo/bert4torch) |
 [Torch4keras](https://github.com/Tongjilibo/torch4keras)
@@ -147,11 +146,11 @@ Assistant：如果你想要制作一个番茄炒蛋，那么下面这些步骤�
 ## 7. 引用
 
 ```
-@misc{build_miniLLM_from_scratch,
-  title={build_miniLLM_from_scratch},
+@misc{build_MiniLLM_from_scratch,
+  title={build_MiniLLM_from_scratch},
   author={Bo Li},
   year={2024},
-  howpublished={\url{https://github.com/Tongjilibo/build_miniLLM_from_scratch}},
+  howpublished={\url{https://github.com/Tongjilibo/build_MiniLLM_from_scratch}},
 }
 ```
 
