@@ -76,7 +76,7 @@ python convert.py
 |         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
 |-------------------------------|--------------------------|---------------------|
 | MiniLLM-L12_H1024_A8-NoWudao  |140亿 Tokens; btz=32*4gpu; lr=3e-4; warmup_steps=5000 |  4×A800(80G), 单卡占用约60G，耗时20h|
-| MiniLLM-L12_H1024_A8-WithWudao|640亿 Tokens; btz=32*4gpu; lr=1.5e-4; warmup_steps=5000 |1️⃣ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>2️⃣ baby-llama2项目2×4090，耗时26d<br/>3️⃣ 个人测试单卡btz=8下, gpu占用约17G，时长未知|
+| MiniLLM-L12_H1024_A8-WithWudao|640亿 Tokens; btz=32*4gpu; lr=1.5e-4; warmup_steps=5000 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用）|
 
 
 - loss记录
