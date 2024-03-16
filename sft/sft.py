@@ -32,8 +32,8 @@ args.weight_decay = 0.1
 args.interval = 2000
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.config_path = '../config'
-args.model_path = '../ckpt/L12_H1024_A8-WithWudao/final/model.pt'
-args.save_dir = '../ckpt/L12_H1024_A8-WithWudao-SFT'
+args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao/final/model.pt'
+args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao-SFT'
 filenames = [
     'shibing624@alpaca-zh/alpaca_gpt4_data_zh.json',
     # 'BelleGroup@train_0.5M_CN/Belle_open_source_0.5M.json',

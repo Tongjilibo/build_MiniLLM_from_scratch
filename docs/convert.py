@@ -7,7 +7,7 @@ from bert4torch.models import build_transformer_model
 from bert4torch.snippets import copytree
 
 config_path = '../config'
-# model_path = '../ckpt/L12_H1024_A8-WithWudao/final/model.pt'
+# model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao/final/model.pt'
 model_path = '../ckpt/L12_H1024_A8-Wudao-SFT_Alpaca/final/model.pt'
 save_dir = os.path.dirname(model_path) + '_transformers'
 

@@ -12,7 +12,11 @@
 
 ## 1. 介绍
 - **初衷**：本项目旨在构建一个小参数量的llm，完整走完`预训练` -> `指令微调`  -> `奖励模型`  -> `强化学习` 四个阶段，以可控的成本完成一个可以完成简单聊天任务的chat模型
-- **特色**: 使用[bert4torch](https://github.com/Tongjilibo/bert4torch)训练框架，代码简介高效；优化了训练时候内存占用；提供了完整训练log供复现比对
+- **特色**: 
+  - 使用[bert4torch](https://github.com/Tongjilibo/bert4torch)训练框架，代码简洁高效；
+  - 训练的checkpoint可以直接使用`transformers`包进行推理
+  - 优化了训练时候内存占用；
+  - 提供了完整训练log供复现比对
 
 ## 2. 快速开始
 - 环境安装
@@ -20,7 +24,7 @@
 pip install git+https://github.com/Tongjilibo/torch4keras.git
 pip install git+https://github.com/Tongjilibo/bert4torch
 ```
-- 训练脚本
+- 脚本说明
 ```shell
 # 预训练
 cd pretrain
@@ -28,7 +32,7 @@ nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.l
 
 # 预训练推理（命令行聊天）
 cd pretrain
-python infer.py
+python infer.py  # python infer_transformers.py
 
 # 指令微调训练
 cd sft
@@ -36,10 +40,15 @@ python sft.py
 
 # 指令微调推理（命令行聊天）
 cd sft
-python infer.py
+python infer.py  # python infer_transformers.py
+
+# 把ckpt转化成transformers可以运行的格式
+cd docs
+python convert.py
 ```
 
 ## 3. 更新历史
+- **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-L12_H1024_A8-NoWudao`和`MiniLLM-MiniLLM-L12_H1024_A8-WithWudao`; SFT模型`MiniLLM-L12_H1024_A8-Wudao-SFT_Alpaca`
 
 ## 4. 预训练
 ### 4.1 预训练语料（源于[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)）
@@ -56,14 +65,14 @@ python infer.py
 ### 4.2 预训练权重
 |预训练权重 | 预训练语料                    | 下载地址                       |
 |----------------------------|--------------------------|---------------------|
-| L12_H1024_A8-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科<br/>+BaiduBaiKe<br/>+shibing624/medical<br/>+C4_zh | [百度网盘](https://pan.baidu.com/s/1Zvk2Nuf7fsOPKJOk-Tjjcg?pwd=1oel) 提取码:1oel|
-| L12_H1024_A8-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科<br/>+BaiduBaiKe<br/>+shibing624/medical<br/>+C4_zh<br/>+WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1Zvk2Nuf7fsOPKJOk-Tjjcg?pwd=1oel) 提取码:1oel|
+| MiniLLM-L12_H1024_A8-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
+| MiniLLM-L12_H1024_A8-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
 
 ### 4.3 预训练过程
 ![tensorboard](./docs/pics/tensorboard.png)
 
-### 4.4 预训练续写
-- L12_H1024_A8-NoWudao
+### 4.4 预训练续写效果
+- MiniLLM-L12_H1024_A8-NoWudao
 ```shell
 用户：小明学习优异、身体健康、是一名
 
@@ -76,7 +85,7 @@ python infer.py
 续写：床前明月光，疑是地上霜。举头望明月，低头思故乡……”
 我读着这些诗句时也倍感亲切和亲切了！
 ```
-- L12_H1024_A8-WithWudao
+- MiniLLM-L12_H1024_A8-WithWudao
 ```shell
 用户：小明学习优异、身体健康、是一名
 
@@ -101,13 +110,13 @@ python infer.py
 ### 5.2 指令微调权重
 |指令微调权重 | 语料            | 下载地址                       |
 |----------------------------|-------------------------|--------------------------|
-| L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1Zvk2Nuf7fsOPKJOk-Tjjcg?pwd=1oel) 提取码:1oel|
+| MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
 
 ### 5.3 训练过程
 ![tensorboard](./docs/pics/tensorboard_sft.png)
 
-### 5.4 指令微调Chat
-- L12_H1024_A8-WithWudao-SFT_Alpaca
+### 5.4 指令微调Chat效果
+- MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca
 ```shell
 User：你好
 
@@ -163,8 +172,8 @@ Assistant：如果你想要制作一个番茄炒蛋，那么下面这些步骤�
          <a href="https://github.com/Tongjilibo">微信群</a> 
       </td>
       <td>
-         <a href="https://star-history.com/#Tongjilibo/bert4torch&Date"><img width="400" height="250" src="https://api.star-history.com/svg?repos=Tongjilibo/bert4torch&type=Date" alt="pic"></a><br>
-         <a href="https://star-history.com/#Tongjilibo/bert4torch&Date">Star History Chart</a> 
+         <a href="https://star-history.com/#Tongjilibo/build_MiniLLM_from_scratch&Date"><img width="400" height="250" src="https://api.star-history.com/svg?repos=Tongjilibo/build_MiniLLM_from_scratch&type=Date" alt="pic"></a><br>
+         <a href="https://star-history.com/#Tongjilibo/build_MiniLLM_from_scratch&Date">Star History Chart</a> 
       </td>    
       </tr>
   </tbody>

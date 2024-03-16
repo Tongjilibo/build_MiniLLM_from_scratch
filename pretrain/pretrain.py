@@ -32,15 +32,15 @@ args.interval = 2000
 args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.config_path = '/home/hfai/h01305/projects/build_llm_from_scratch/config/bert4torch_config.json'
-args.resume_path = None # '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao/96000_3.2223'
+args.resume_path = None # '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/MiniLLM-L12_H1024_A8-WithWudao/96000_3.2223'
 
 if False:
     # 不含悟道语料
-    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao'
+    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/MiniLLM-L12_H1024_A8-NoWudao'
     args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i]
 else:
     # 含悟道语料
-    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-WithWudao'
+    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/MiniLLM-L12_H1024_A8-WithWudao'
     args.filenames = [i for i in glob(args.data_path, recursive=True)]
 
 # ========================加载数据集========================
