@@ -5,3 +5,5 @@ ckpt
 __pycache__
 *.pkl
 *.bin
+*.idea
+data
