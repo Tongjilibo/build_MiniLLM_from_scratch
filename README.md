@@ -71,6 +71,16 @@ python convert.py
 | MiniLLM-L12_H1024_A8-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
 
 ### 4.3 预训练过程
+- 训练参数配置和训练时长
+
+|         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
+|-------------------------------|--------------------------|---------------------|
+| MiniLLM-L12_H1024_A8-NoWudao  |140亿 Tokens; btz=32*4gpu; lr=3e-4; warmup_steps=5000 |  4×A800(80G), 单卡占用约60G，耗时20h|
+| MiniLLM-L12_H1024_A8-WithWudao|640亿 Tokens; btz=32*4gpu; lr=1.5e-4; warmup_steps=5000 |1️⃣ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>2️⃣ baby-llama2项目2×4090，耗时26d<br/>3️⃣ 个人测试单卡btz=8下, gpu占用约17G，时长未知|
+
+
+- loss记录
+
 ![tensorboard](./docs/pics/tensorboard.png)
 
 ### 4.4 预训练续写效果
@@ -115,6 +125,14 @@ python convert.py
 | MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
 
 ### 5.3 训练过程
+- 训练参数配置和训练时长
+
+|         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
+|-------------------------------|--------------------------|---------------------|
+| MiniLLM-L12_H1024_A8-NoWudao  |[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)数据集; btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min|
+
+- loss
+
 ![tensorboard](./docs/pics/tensorboard_sft.png)
 
 ### 5.4 指令微调Chat效果
