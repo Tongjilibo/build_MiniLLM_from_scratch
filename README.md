@@ -135,7 +135,29 @@ python convert.py
 
 ![tensorboard](./docs/pics/tensorboard_sft.png)
 
-### 5.4 指令微调Chat效果
+### 5.4 模型调用
+```python
+# 以下两句视网络情况添加
+import os
+os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
+from transformers import AutoTokenizer, LlamaForCausalLM
+import torch
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model_name = 'Tongjilibo/MiniLLM-L12_H1024_A8-Wudao-SFT_Alpaca'
+
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+model = LlamaForCausalLM.from_pretrained(model_name).to(device)
+
+query = '你好'
+query = f'<human>{query}<robot>'
+inputs = tokenizer.encode(query, return_tensors='pt', add_special_tokens=False).to(device)
+output_ids = model.generate(inputs)
+response = tokenizer.decode(output_ids[0].cpu(), skip_special_tokens=True)[len(query):]
+print(response)
+```
+
+### 5.5 指令微调Chat效果
 - MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca
 ```shell
 User：你好
