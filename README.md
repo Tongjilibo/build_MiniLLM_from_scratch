@@ -67,8 +67,8 @@ python convert.py
 ### 4.2 预训练权重
 |预训练权重 | 预训练语料                    | 下载地址                       |
 |----------------------------|--------------------------|---------------------|
-| MiniLLM-L12_H1024_A8-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
-| MiniLLM-L12_H1024_A8-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
+| MiniLLM-L12_H1024_A8-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-L12_H1024_A8-NoWudao)|
+| MiniLLM-L12_H1024_A8-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-L12_H1024_A8-WithWudao)|
 
 ### 4.3 预训练过程
 - 训练参数配置和训练时长
@@ -122,7 +122,7 @@ python convert.py
 ### 5.2 指令微调权重
 |指令微调权重 | 语料            | 下载地址                       |
 |----------------------------|-------------------------|--------------------------|
-| MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
+| MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-L12_H1024_A8-Wudao-SFT_Alpaca)|
 
 ### 5.3 训练过程
 - 训练参数配置和训练时长
