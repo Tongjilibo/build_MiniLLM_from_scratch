@@ -279,29 +279,33 @@ MAPPING = {
 }
 
 class SFTDataset(Dataset):
-    def __init__(self, filenames, tokenizer, save_path='../sft_data/sft_data.pkl'):
+    def __init__(self, filenames, tokenizer, save_dir='../sft_data/'):
         super().__init__()
         self.MAX_LENGTH = MAX_LENGTH
         self.tokenizer = tokenizer
-        self.save_path = save_path
+        self.save_dir = save_dir
         self.data = self.load_data(filenames)
     
     def load_data(self, filenames):
-        if os.path.exists(self.save_path):
-            # 加载
-            with open(self.save_path, 'rb') as f:
-                all_res = pickle.load(f)
-        else:
-            all_res = []
-            for filename in tqdm(filenames, desc='Load data'):
-                postfix = filename.split('@')[-1]
-                all_res.extend(MAPPING[postfix](filename, self.tokenizer))
-            random.shuffle(all_res)
 
-            # 保存
-            os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
-            with open(self.save_path, 'wb') as f:
-                pickle.dump(all_res, f)
+        all_res = []
+        for filename in tqdm(filenames, desc='Load data'):
+            postfix = filename.split('@')[-1]
+            save_path = os.path.join(self.save_dir, postfix.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
+            if os.path.exists(save_path):
+                # 加载
+                with open(save_path, 'rb') as f:
+                    res = pickle.load(f)
+            else:
+                res = MAPPING[postfix](filename, self.tokenizer)
+                # 保存
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                with open(save_path, 'wb') as f:
+                    pickle.dump(all_res, f)
+            log_info(f'Loading {postfix}: {len(res)}')
+            all_res.extend(res)
+        random.shuffle(all_res)
+
         log_info(f'Training samples: {len(all_res)}')
         return all_res
 
