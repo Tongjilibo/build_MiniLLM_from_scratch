@@ -12,7 +12,7 @@ from data_process import HUMAN, ROBOT
 
 max_length = 1024
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-dir_path = '../ckpt/MiniLLM-L12_H1024_A8-Wudao-SFT_Alpaca/final_transformers'
+dir_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca/final_transformers'
 
 tokenizer = AutoTokenizer.from_pretrained(dir_path, trust_remote_code=True)
 model = LlamaForCausalLM.from_pretrained(dir_path).to(device)

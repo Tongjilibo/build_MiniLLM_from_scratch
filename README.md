@@ -50,7 +50,7 @@ python convert.py
 ```
 
 ## 3. 更新历史
-- **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-L12_H1024_A8-NoWudao`和`MiniLLM-MiniLLM-L12_H1024_A8-WithWudao`; SFT模型`MiniLLM-L12_H1024_A8-Wudao-SFT_Alpaca`
+- **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-L12_H1024_A8-NoWudao`和`MiniLLM-MiniLLM-L12_H1024_A8-WithWudao`; SFT模型`MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca`
 
 ## 4. 预训练
 ### 4.1 预训练语料（源于[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)）
@@ -83,7 +83,29 @@ python convert.py
 
 ![tensorboard](./docs/pics/tensorboard.png)
 
-### 4.4 预训练续写效果
+### 4.4 预训练模型调用
+```python
+# 以下两句视网络情况添加
+import os
+os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
+
+from transformers import AutoTokenizer, LlamaForCausalLM
+import torch
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model_name = 'Tongjilibo/MiniLLM-L12_H1024_A8-WithWudao'  # 'Tongjilibo/MiniLLM-L12_H1024_A8-NoWudao'
+
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+model = LlamaForCausalLM.from_pretrained(model_name).to(device)
+
+query = '王鹏是一名'
+inputs = tokenizer.encode(query, return_tensors='pt', add_special_tokens=False).to(device)
+output_ids = model.generate(inputs)
+response = tokenizer.decode(output_ids[0].cpu(), skip_special_tokens=True)
+print(response)
+```
+
+### 4.5 预训练续写效果
 - MiniLLM-L12_H1024_A8-NoWudao
 ```shell
 用户：小明学习优异、身体健康、是一名
@@ -122,9 +144,9 @@ python convert.py
 ### 5.2 指令微调权重
 |指令微调权重 | 语料            | 下载地址                       |
 |----------------------------|-------------------------|--------------------------|
-| MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-L12_H1024_A8-Wudao-SFT_Alpaca)|
+| MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca)|
 
-### 5.3 训练过程
+### 5.3 指令微调训练过程
 - 训练参数配置和训练时长
 
 |         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
@@ -135,16 +157,17 @@ python convert.py
 
 ![tensorboard](./docs/pics/tensorboard_sft.png)
 
-### 5.4 模型调用
+### 5.4 指令微调模型调用
 ```python
 # 以下两句视网络情况添加
 import os
 os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
+
 from transformers import AutoTokenizer, LlamaForCausalLM
 import torch
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model_name = 'Tongjilibo/MiniLLM-L12_H1024_A8-Wudao-SFT_Alpaca'
+model_name = 'Tongjilibo/MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca'
 
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = LlamaForCausalLM.from_pretrained(model_name).to(device)
