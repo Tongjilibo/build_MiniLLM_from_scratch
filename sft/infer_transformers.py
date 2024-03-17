@@ -9,13 +9,13 @@ from transformers import TextIteratorStreamer
 from threading import Thread
 from data_process import HUMAN, ROBOT
 
-
 max_length = 1024
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 dir_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca/final_transformers'
 
 tokenizer = AutoTokenizer.from_pretrained(dir_path, trust_remote_code=True)
 model = LlamaForCausalLM.from_pretrained(dir_path).to(device)
+
 
 def build_cli_history(history):
     prompt = ''
@@ -24,6 +24,7 @@ def build_cli_history(history):
         prompt += f"\n\nRobot：{response.strip()}"
     return prompt
 
+
 def build_prompt(query, history) -> str:
     texts = ''
     for user_input, response in history:
@@ -31,6 +32,7 @@ def build_prompt(query, history) -> str:
 
     texts += f'{HUMAN}{query}{ROBOT}'
     return texts
+
 
 def chat():
     '''非流式'''
@@ -44,8 +46,9 @@ def chat():
             history = []
             os.system(clear_command)
             continue
-        
-        inputs = tokenizer.encode(build_prompt(query, history), return_tensors='pt', add_special_tokens=False).to(device)
+
+        inputs = tokenizer.encode(build_prompt(query, history), return_tensors='pt', add_special_tokens=False).to(
+            device)
         response = model.generate(inputs)
         response = tokenizer.decode(response[0].cpu(), skip_special_tokens=True)
 
@@ -67,10 +70,10 @@ def stream_chat():
             history = []
             os.system(clear_command)
             continue
-        
+
         query_new = build_prompt(query, history)
         inputs = tokenizer.encode(query_new, return_tensors='pt', add_special_tokens=False).to(device)
-        generation_kwargs = dict({'input_ids':inputs}, streamer=streamer, max_new_tokens=512)
+        generation_kwargs = dict({'input_ids': inputs}, streamer=streamer, max_new_tokens=512)
         thread = Thread(target=model.generate, kwargs=generation_kwargs)
         thread.start()
 
