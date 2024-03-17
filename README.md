@@ -21,8 +21,7 @@
 ## 2. 快速开始
 - 环境安装
 ```shell
-pip install git+https://github.com/Tongjilibo/torch4keras.git
-pip install bert4torch==0.4.9
+pip install bert4torch==0.4.9.post2  # 若找不到则指定　-i https://pypi.org/simple
 ```
 - 脚本说明
 ```shell
