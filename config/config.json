@@ -1,18 +1,19 @@
 {  "architectures": [
-    "LlamaForCausalLM"
-  ],
-   "bos_token_id": 1,
-   "eos_token_id": 2,
-   "hidden_size": 1024,
-   "max_position_embeddings": 1024,
-   "intermediate_size": 2752, 
-   "num_attention_heads": 8,
-   "num_hidden_layers": 12,
-   "hidden_act": "silu",
-   "vocab_size": 64793,
-   "rms_norm_eps": 1e-06,
-   "tie_emb_prj_weight": true,
-   "use_cache": true,
-   "do_sample": true,
-   "max_length": 256 
+  "LlamaForCausalLM"
+],
+  "model_type": "llama",
+  "bos_token_id": 1,
+  "eos_token_id": 2,
+  "hidden_size": 1024,
+  "max_position_embeddings": 1024,
+  "intermediate_size": 2752, 
+  "num_attention_heads": 8,
+  "num_hidden_layers": 12,
+  "hidden_act": "silu",
+  "vocab_size": 64793,
+  "rms_norm_eps": 1e-06,
+  "tie_emb_prj_weight": true,
+  "use_cache": true,
+  "do_sample": true,
+  "max_length": 1024 
 }

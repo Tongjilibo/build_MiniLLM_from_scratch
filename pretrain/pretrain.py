@@ -104,7 +104,7 @@ use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
 optimizer = optim.AdamW(optim_groups, lr=args.lr, betas=(0.9, 0.95), **extra_args)
 
-scheduler = get_linear_schedule_with_warmup(optimizer, 5000, len(train_dataloader)*args.epochs)
+scheduler = get_linear_schedule_with_warmup(optimizer, 5000, len(train_dataloader)*args.epochs//args.grad_accumulation_steps)
 model.compile(loss=CrossEntropyLoss(ignore_index=args.pad_token_id), optimizer=optimizer, scheduler=scheduler, 
               grad_accumulation_steps=args.grad_accumulation_steps, clip_grad_norm=1.0, mixed_precision=True)
 

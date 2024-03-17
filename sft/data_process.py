@@ -1,4 +1,6 @@
 ''' 数据处理模块
+本模块不用跑，跑sft的时候，会使用到本模块处理数据和保存到硬盘
+
 1. 增加HUMAN和ROBOT标记，可以用于多轮对话问答
 2. 不限制prompt和answer的长度，仅限制总长度，可容纳更多的样本
 3. 多轮对话中，同时计算多个answer的loss, 提升训练效率
@@ -277,29 +279,33 @@ MAPPING = {
 }
 
 class SFTDataset(Dataset):
-    def __init__(self, filenames, tokenizer, save_path='../sft_data/sft_data.pkl'):
+    def __init__(self, filenames, tokenizer, save_dir='../sft_data/'):
         super().__init__()
         self.MAX_LENGTH = MAX_LENGTH
         self.tokenizer = tokenizer
-        self.save_path = save_path
+        self.save_dir = save_dir
         self.data = self.load_data(filenames)
     
     def load_data(self, filenames):
-        if os.path.exists(self.save_path):
-            # 加载
-            with open(self.save_path, 'rb') as f:
-                all_res = pickle.load(f)
-        else:
-            all_res = []
-            for filename in tqdm(filenames, desc='Load data'):
-                postfix = filename.split('@')[-1]
-                all_res.extend(MAPPING[postfix](filename, self.tokenizer))
-            random.shuffle(all_res)
 
-            # 保存
-            os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
-            with open(self.save_path, 'wb') as f:
-                pickle.dump(all_res, f)
+        all_res = []
+        for filename in tqdm(filenames, desc='Load data'):
+            postfix = filename.split('@')[-1]
+            save_path = os.path.join(self.save_dir, postfix.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
+            if os.path.exists(save_path):
+                # 加载
+                with open(save_path, 'rb') as f:
+                    res = pickle.load(f)
+            else:
+                res = MAPPING[postfix](filename, self.tokenizer)
+                # 保存
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                with open(save_path, 'wb') as f:
+                    pickle.dump(all_res, f)
+            log_info(f'Loading {postfix}: {len(res)}')
+            all_res.extend(res)
+        random.shuffle(all_res)
+
         log_info(f'Training samples: {len(all_res)}')
         return all_res
 
@@ -315,18 +321,3 @@ def collate_train_fn(batch):
     batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=PAD_TOKEN_ID), dtype=torch.long)
     batch_labels = torch.tensor(sequence_padding(batch_labels, value=PAD_TOKEN_ID), dtype=torch.long)
     return [batch_token_ids], batch_labels
-
-
-if __name__ == '__main__':
-    # 获取可能
-    # get_probable_samples(['F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl'])
-
-    # 测试各个文件的处理
-    from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
-    process_deepctrl('F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
-    process_moss002('F:/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
-    process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
-    process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-    process_shareai('F:/data/corpus/sft/common/shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
-    process_firefly('F:/data/corpus/sft/common/YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)

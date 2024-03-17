@@ -16,17 +16,22 @@
   - 训练的checkpoint可以直接使用`transformers`包进行推理
   - 优化了训练时候内存占用；
   - 提供了完整训练log供复现比对
+- **声明**: 本实验训练出来的模型，目前只具备简单的聊天功能（受限于语料大小、模型规模、sft语料大小和质量），不具备回答复杂问题的能力。
 
 ## 2. 快速开始
 - 环境安装
 ```shell
+pip install git+https://github.com/Tongjilibo/torch4keras.git
 pip install bert4torch==0.4.9
 ```
 - 脚本说明
 ```shell
+# 为防止terminal关闭，可以使用nohup, tmux, screen方式来启动
+# eg. nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
+
 # 预训练
 cd pretrain
-nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
+torchrun --standalone --nproc_per_node=4 pretrain.py  # 部分反映ddp训到一般会崩，需设置`export NCCL_IB_DISABLE=1`
 
 # 预训练推理（命令行聊天）
 cd pretrain
@@ -46,7 +51,7 @@ python convert.py
 ```
 
 ## 3. 更新历史
-- **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-L12_H1024_A8-NoWudao`和`MiniLLM-MiniLLM-L12_H1024_A8-WithWudao`; SFT模型`MiniLLM-L12_H1024_A8-Wudao-SFT_Alpaca`
+- **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-L12_H1024_A8-NoWudao`和`MiniLLM-MiniLLM-L12_H1024_A8-WithWudao`; SFT模型`MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca`
 
 ## 4. 预训练
 ### 4.1 预训练语料（源于[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)）
@@ -58,18 +63,50 @@ python convert.py
 | [WuDaoCorpora](https://data.baai.ac.cn/details/WuDaoCorporaText) | 中文悟道开源的200G数据|
 | [shibing624/medical](https://huggingface.co/datasets/shibing624/medical/tree/main)| 源自shibing624的一部分医学领域的预训练数据 |
 
-项目开源了经过ChatGLM2-6B的分词器处理后的预训练语料，共计**634亿Tokens**的数据量，链接如下：[Corpus](https://pan.baidu.com/s/18o4gF-G68qfgOGWQXgAg3g) 提取码：6unr。将下载好的数据放到./data目录下即可。
+项目开源了经过ChatGLM2-6B的分词器处理后的预训练语料，共计**634亿Tokens**的数据量，链接如下：[Corpus](https://pan.baidu.com/s/18o4gF-G68qfgOGWQXgAg3g) 提取码：6unr。
 
 ### 4.2 预训练权重
 |预训练权重 | 预训练语料                    | 下载地址                       |
 |----------------------------|--------------------------|---------------------|
-| MiniLLM-L12_H1024_A8-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
-| MiniLLM-L12_H1024_A8-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
+| MiniLLM-L12_H1024_A8-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-L12_H1024_A8-NoWudao)|
+| MiniLLM-L12_H1024_A8-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-L12_H1024_A8-WithWudao)|
 
 ### 4.3 预训练过程
+- 训练参数配置和训练时长
+
+|         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
+|-------------------------------|--------------------------|---------------------|
+| MiniLLM-L12_H1024_A8-NoWudao  |140亿 Tokens; btz=32*4gpu; lr=3e-4; warmup_steps=5000 |  4×A800(80G), 单卡占用约60G，耗时20h|
+| MiniLLM-L12_H1024_A8-WithWudao|640亿 Tokens; btz=32*4gpu; lr=1.5e-4; warmup_steps=5000 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用）|
+
+
+- loss记录
+
 ![tensorboard](./docs/pics/tensorboard.png)
 
-### 4.4 预训练续写效果
+### 4.4 预训练模型调用
+```python
+# 以下两句视网络情况添加
+import os
+os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
+
+from transformers import AutoTokenizer, LlamaForCausalLM
+import torch
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model_name = 'Tongjilibo/MiniLLM-L12_H1024_A8-WithWudao'  # 'Tongjilibo/MiniLLM-L12_H1024_A8-NoWudao'
+
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+model = LlamaForCausalLM.from_pretrained(model_name).to(device)
+
+query = '王鹏是一名'
+inputs = tokenizer.encode(query, return_tensors='pt', add_special_tokens=False).to(device)
+output_ids = model.generate(inputs)
+response = tokenizer.decode(output_ids[0].cpu(), skip_special_tokens=True)
+print(response)
+```
+
+### 4.5 预训练续写效果
 - MiniLLM-L12_H1024_A8-NoWudao
 ```shell
 用户：小明学习优异、身体健康、是一名
@@ -97,23 +134,61 @@ python convert.py
 ```
 
 ## 5、指令微调
-### 5.1 指令微调语料
+### 5.1 指令微调语料（筛选的可用数据集）
 | 数据集名称     | 介绍               |
 | ---------------- | -------------------- |
 |[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)|参考Alpaca方法基于GPT4得到的self-instruct数据，约5万条|
 |[BelleGroup/Belle-0.5M-cn](https://huggingface.co/datasets/BelleGroup/train_0.5M_CN)|包含约50万条由BELLE项目生成的中文指令数据||
 |[BelleGroup/Belle-1M-cn](https://huggingface.co/datasets/BelleGroup/train_1M_CN)| 包含约100万条由BELLE项目生成的中文指令数据|
+|[BelleGroup/Belle-school_math_0.25M](https://huggingface.co/datasets/BelleGroup/school_math_0.25M)| Belle开放的0.25M数学指令数据集|
+|[BelleGroup/Belle-multiturn_chat_0.8M](https://huggingface.co/datasets/BelleGroup/multiturn_chat_0.8M)| Belle开放的0.8M多轮任务对话数据集|
 |[YeungNLP/firefly-train-1.1M](https://huggingface.co/datasets/YeungNLP/firefly-train-1.1M)|流萤23种常见的中文NLP任务的数据，并且构造了许多与中华文化相关的数据，如对联、作诗、文言文翻译、散文、金庸小说等。对于每个任务，由人工书写若干种指令模板，保证数据的高质量与丰富度，数据量为115万|
+|[fnlp/moss-002-sft-data](https://huggingface.co/datasets/fnlp/moss-002-sft-data)|MOSS-002所使用的多轮对话数据，覆盖有用性、忠实性、无害性三个层面，包含由text-davinci-003生成的约57万条英文对话和59万条中文对话|
+|[fnlp/moss-003-sft-data](https://huggingface.co/datasets/fnlp/moss-003-sft-data)|moss-moon-003-sft所使用的多轮对话数据，基于MOSS-002内测阶段采集的约10万用户输入数据和gpt-3.5-turbo构造而成，相比moss-002-sft-data，moss-003-sft-data更加符合真实用户意图分布，包含更细粒度的有用性类别标记、更广泛的无害性数据和更长对话轮数，约含110万条对话数据|
+|[shareAI/CodeChat](https://huggingface.co/datasets/shareAI/CodeChat)      | 主要包含逻辑推理、代码问答、代码生成相关语料样本。 |
+|[shareAI/ShareGPT-Chinese-English-90k](https://huggingface.co/datasets/shareAI/ShareGPT-Chinese-English-90k)     | 中英文平行双语优质人机问答数据集，覆盖真实复杂场景下的用户提问。|
+|[deepctrl/deepctrl-sft-data](https://www.modelscope.cn/datasets/deepctrl/deepctrl-sft-data/summary)|匠数大模型SFT数据集是一个由匠数科技精心搜集整理的高质量数据集,包含10M条数据的中文数据集和包含2M条数据的英文数据集|
 
 ### 5.2 指令微调权重
 |指令微调权重 | 语料            | 下载地址                       |
 |----------------------------|-------------------------|--------------------------|
-| MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5)|
+| MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca)|
 
-### 5.3 训练过程
+### 5.3 指令微调训练过程
+- 训练参数配置和训练时长
+
+|         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
+|-------------------------------|--------------------------|---------------------|
+| MiniLLM-L12_H1024_A8-NoWudao  |[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)数据集; btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min|
+
+- loss
+
 ![tensorboard](./docs/pics/tensorboard_sft.png)
 
-### 5.4 指令微调Chat效果
+### 5.4 指令微调模型调用
+```python
+# 以下两句视网络情况添加
+import os
+os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
+
+from transformers import AutoTokenizer, LlamaForCausalLM
+import torch
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model_name = 'Tongjilibo/MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca'
+
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+model = LlamaForCausalLM.from_pretrained(model_name).to(device)
+
+query = '你好'
+query = f'<human>{query}<robot>'
+inputs = tokenizer.encode(query, return_tensors='pt', add_special_tokens=False).to(device)
+output_ids = model.generate(inputs)
+response = tokenizer.decode(output_ids[0].cpu(), skip_special_tokens=True)[len(query):]
+print(response)
+```
+
+### 5.5 指令微调Chat效果
 - MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca
 ```shell
 User：你好
@@ -139,11 +214,16 @@ Assistant：如果你想要制作一个番茄炒蛋，那么下面这些步骤�
 注意：想要炒出更丰富的蔬菜味道，可以适当加入适量的盐和香菜，增加风味。
 ```
 
-## 6. 鸣谢
+## 6. Todo
+- ⬜deepspeed方式训练
+- ⬜加入更多的sft数据
+- ⬜更大的模型规模来
+
+## 7. 鸣谢
 
 - 感谢[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)，本实现有不少地方参考该项目
 
-## 7. 引用
+## 8. 引用
 
 ```
 @misc{build_MiniLLM_from_scratch,
