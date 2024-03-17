@@ -6,7 +6,7 @@
 3. 多轮对话中，同时计算多个answer的loss, 提升训练效率
 '''
 import json
-import numpy as np
+
 from torch.utils.data import DataLoader, Dataset
 import torch
 from bert4torch.snippets import sequence_padding
@@ -16,7 +16,6 @@ from tqdm import tqdm
 import os
 import pickle
 import random
-
 
 MAX_LENGTH = 1024
 HUMAN = '<human>'
@@ -39,7 +38,7 @@ def get_probable_samples(filenames):
         bar.set_description(filename.split('/')[-1])
 
         if any([n in filename for n in ['alpaca_gpt4_data_zh', 'fnlp@moss-002-sft-data']]):
-            #　json格式文件
+            # 　json格式文件
             data = json.load(open(filename, 'r', encoding='utf-8'))
             if MAX_SAMPLES is not None:
                 total_samples += min(len(data), MAX_SAMPLES)
@@ -69,7 +68,7 @@ def process_alpaca(data_path, tokenizer):
         if len(q) + len(a) >= MAX_LENGTH:
             continue
         input_ids = q + a
-        labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+        labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
 
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
@@ -81,7 +80,7 @@ def process_alpaca(data_path, tokenizer):
 def process_belle(data_path, tokenizer):
     '''Belle_open_source_1M.json'''
     f = open(data_path, 'r', encoding='utf-8')
-    
+
     res = []
     while True:
         line = f.readline()
@@ -93,7 +92,7 @@ def process_belle(data_path, tokenizer):
         if len(q) + len(a) >= MAX_LENGTH:
             continue
         input_ids = q + a
-        labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+        labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
 
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
@@ -105,7 +104,7 @@ def process_belle(data_path, tokenizer):
 def process_deepctrl(data_path, tokenizer):
     '''deepctrl-sft-data'''
     f = open(data_path, 'r', encoding='utf-8')
-    
+
     res = []
     while True:
         line = f.readline()
@@ -121,13 +120,13 @@ def process_deepctrl(data_path, tokenizer):
             if len(input_ids + q + a) >= MAX_LENGTH:
                 break
             input_ids.extend(q + a)
-            labels.extend([PAD_TOKEN_ID]*(len(q)-1) + a + [EOS_TOKEN_ID])
-            
+            labels.extend([PAD_TOKEN_ID] * (len(q) - 1) + a + [EOS_TOKEN_ID])
+
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['output'], add_special_tokens=False)
         input_ids.extend(q + a)
-        labels.extend([PAD_TOKEN_ID]*(len(q)-1) + a + [EOS_TOKEN_ID])
-        
+        labels.extend([PAD_TOKEN_ID] * (len(q) - 1) + a + [EOS_TOKEN_ID])
+
         if len(input_ids) >= MAX_LENGTH:
             continue
         assert len(input_ids) == len(labels)
@@ -154,7 +153,7 @@ def process_moss002(data_path, tokenizer):
             if len(input_ids + human + robot) >= MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
-            labels.extend([PAD_TOKEN_ID]*(len(human)-1) + robot + [EOS_TOKEN_ID])
+            labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
 
         if len(input_ids) >= MAX_LENGTH:
             continue
@@ -168,7 +167,7 @@ def process_moss002(data_path, tokenizer):
 def process_moss003(data_path, tokenizer):
     '''fnlp@moss-003-sft-data'''
     f = open(data_path, 'r', encoding='utf-8')
-    
+
     res = []
     while True:
         line = f.readline()
@@ -190,7 +189,7 @@ def process_moss003(data_path, tokenizer):
             if len(input_ids + human + robot) >= MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
-            labels.extend([PAD_TOKEN_ID]*(len(human)-1) + robot + [EOS_TOKEN_ID])
+            labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
 
         if len(input_ids) >= MAX_LENGTH:
             continue
@@ -204,7 +203,7 @@ def process_moss003(data_path, tokenizer):
 def process_shareai(data_path, tokenizer):
     '''shareAI'''
     f = open(data_path, 'r', encoding='utf-8')
-    
+
     res = []
     while True:
         line = f.readline()
@@ -222,7 +221,7 @@ def process_shareai(data_path, tokenizer):
             if len(input_ids + human + robot) >= MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
-            labels.extend([PAD_TOKEN_ID]*(len(human)-1) + robot + [EOS_TOKEN_ID])
+            labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
 
         if len(input_ids) >= MAX_LENGTH:
             continue
@@ -236,7 +235,7 @@ def process_shareai(data_path, tokenizer):
 def process_firefly(data_path, tokenizer):
     '''YeungNLP@firefly-train-1.1M'''
     f = open(data_path, 'r', encoding='utf-8')
-    
+
     res = []
     while True:
         line = f.readline()
@@ -248,7 +247,7 @@ def process_firefly(data_path, tokenizer):
         if len(q) + len(a) >= MAX_LENGTH:
             continue
         input_ids = q + a
-        labels = [PAD_TOKEN_ID] * (len(q)-1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+        labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
         assert len(input_ids) == len(labels)
         res.append((input_ids, labels))
         if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
@@ -258,9 +257,9 @@ def process_firefly(data_path, tokenizer):
 
 MAPPING = {
     'alpaca-zh/alpaca_gpt4_data_zh.json': process_alpaca,
-    'train_1M_CN/Belle_open_source_1M.json': process_belle,
-    'train_0.5M_CN/Belle_open_source_0.5M.json': process_belle,
-    'school_math_0.25M/school_math_0.25M.json': process_belle,
+    'BelleGroup/Belle_open_source_1M.jsonl': process_belle,
+    'BelleGroup/Belle_open_source_0.5M.jsonl': process_belle,
+    'BelleGroup/school_math_0.25M.jsonl': process_belle,
     'deepctrl-sft-data/sft_data_zh.jsonl': process_deepctrl,
     'moss-002-sft-data/zh_helpfulness.json': process_moss002,
     'moss-002-sft-data/zh_honesty.json': process_moss002,
@@ -278,31 +277,30 @@ MAPPING = {
     'firefly-train-1.1M/firefly-train-1.1M.jsonl': process_firefly
 }
 
+
 class SFTDataset(Dataset):
-    def __init__(self, filenames, tokenizer, save_dir='../sft_data/'):
+    def __init__(self, filenames, tokenizer, dataset_dir="../data", save_dir='../sft_data/'):
         super().__init__()
         self.MAX_LENGTH = MAX_LENGTH
         self.tokenizer = tokenizer
         self.save_dir = save_dir
+        self.dataset_dir = dataset_dir
         self.data = self.load_data(filenames)
-    
-    def load_data(self, filenames):
 
+    def load_data(self, filenames):
         all_res = []
         for filename in tqdm(filenames, desc='Load data'):
-            postfix = filename.split('@')[-1]
-            save_path = os.path.join(self.save_dir, postfix.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
+            save_path = os.path.join(self.save_dir,
+                                     filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
             if os.path.exists(save_path):
-                # 加载
                 with open(save_path, 'rb') as f:
                     res = pickle.load(f)
             else:
-                res = MAPPING[postfix](filename, self.tokenizer)
-                # 保存
+                res = MAPPING[filename](self.dataset_dir + filename, self.tokenizer)
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 with open(save_path, 'wb') as f:
                     pickle.dump(all_res, f)
-            log_info(f'Loading {postfix}: {len(res)}')
+            log_info(f'Loading {filename}: {len(res)}')
             all_res.extend(res)
         random.shuffle(all_res)
 
@@ -311,9 +309,10 @@ class SFTDataset(Dataset):
 
     def __len__(self):
         return len(self.data)
-    
+
     def __getitem__(self, index: int):
         return self.data[index]
+
 
 def collate_train_fn(batch):
     batch_token_ids = [i[0] for i in batch]
