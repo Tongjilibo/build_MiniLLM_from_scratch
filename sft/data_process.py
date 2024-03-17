@@ -17,6 +17,7 @@ import os
 import pickle
 import random
 
+
 MAX_LENGTH = 1024
 HUMAN = '<human>'
 ROBOT = '<robot>'

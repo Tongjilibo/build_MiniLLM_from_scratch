@@ -25,7 +25,7 @@ from glob import glob
 args = DottableDict()
 args.include_wudao_corpus = False
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
-args.lr = 3e-4
+args.lr = 3e-4  # 不含悟道的使用的是3e-4, 含悟道的使用的1.5e-4
 args.batch_size = 32
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
@@ -40,10 +40,10 @@ args.config_path = '../config/bert4torch_config.json'
 args.resume_path = None
 
 if args.include_wudao_corpus:
-    args.save_dir = '../ckpt/iniLLM-L12_H1024_A8-NoWudao'
+    args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao'
     args.filenames = [i for i in glob(args.data_path, recursive=True)]
 else:
-    args.save_dir = '../ckpt/iniLLM-L12_H1024_A8-NoWudao'
+    args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-NoWudao'
     args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i]
 
 
@@ -55,6 +55,7 @@ class MyDataset(Dataset):
         self.token_size, self.smp_size = 0, 0
         for fi, filename in enumerate(filenames):
             with open(filename, 'r') as f:
+                nbytes = f.seek(0,2)
                 flen = f.tell() // np.dtype('uint16').itemsize
             self.token_size += flen
             self.index_map.update({self.smp_size + i: (fi, i) for i in range(flen // args.max_length)})

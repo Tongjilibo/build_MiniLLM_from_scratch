@@ -13,7 +13,7 @@ args.max_length = 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-args.model_path = '../ckpt/iniLLM-L12_H1024_A8-NoWudao'
+args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-NoWudao'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
