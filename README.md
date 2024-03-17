@@ -31,7 +31,7 @@ pip install bert4torch==0.4.9
 
 # 预训练
 cd pretrain
-nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
+torchrun --standalone --nproc_per_node=4 pretrain.py  # 部分反映ddp训到一般会崩，需设置`export NCCL_IB_DISABLE=1`
 
 # 预训练推理（命令行聊天）
 cd pretrain
