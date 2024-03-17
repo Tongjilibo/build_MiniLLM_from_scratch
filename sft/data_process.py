@@ -1,4 +1,6 @@
 ''' 数据处理模块
+本模块不用跑，跑sft的时候，会使用到本模块处理数据和保存到硬盘
+
 1. 增加HUMAN和ROBOT标记，可以用于多轮对话问答
 2. 不限制prompt和answer的长度，仅限制总长度，可容纳更多的样本
 3. 多轮对话中，同时计算多个answer的loss, 提升训练效率
@@ -315,18 +317,3 @@ def collate_train_fn(batch):
     batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=PAD_TOKEN_ID), dtype=torch.long)
     batch_labels = torch.tensor(sequence_padding(batch_labels, value=PAD_TOKEN_ID), dtype=torch.long)
     return [batch_token_ids], batch_labels
-
-
-if __name__ == '__main__':
-    # 获取可能
-    # get_probable_samples(['F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl'])
-
-    # 测试各个文件的处理
-    from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
-    process_deepctrl('F:/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
-    process_moss002('F:/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
-    process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
-    process_moss003('F:/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-    process_shareai('F:/data/corpus/sft/common/shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
-    process_firefly('F:/data/corpus/sft/common/YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
