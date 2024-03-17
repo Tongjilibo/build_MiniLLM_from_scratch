@@ -22,26 +22,26 @@ import inspect
 args = DottableDict()
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.lr = 1.5e-4  # 不含悟道的使用的是3*e-4, 含悟道使用是1.5e-4
-args.batch_size = 32
+args.batch_size = 4
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
 args.max_length = 1024
 args.epochs = 1
 args.weight_decay = 0.1
 args.interval = 2000
-args.data_path = '/home/hfai/data/pretrain/pretrain_data_bin/**/*.bin'
+args.data_path = 'F:\data\corpus\pretrain\pretrain_data_bin/**/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '/home/hfai/h01305/projects/build_llm_from_scratch/config/bert4torch_config.json'
+args.config_path = '../config/bert4torch_config.json'
 args.resume_path = None # '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/MiniLLM-L12_H1024_A8-WithWudao/96000_3.2223'
 
 if False:
     # 不含悟道语料
-    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/MiniLLM-L12_H1024_A8-NoWudao'
+    args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-NoWudao'
     args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i]
 else:
     # 含悟道语料
-    args.save_dir = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/MiniLLM-L12_H1024_A8-WithWudao'
-    args.filenames = [i for i in glob(args.data_path, recursive=True)]
+    args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao1'
+    args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wiki' in i]
 
 # ========================加载数据集========================
 class MyDataset(Dataset):
