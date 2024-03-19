@@ -1,6 +1,8 @@
 #! -*- coding: utf-8 -*-
 """
-sft-推理：transformers
+sft-推理：transformerstransformers格式
+- 使用的是docs/convert.py对pt文件转换后的pytorch_model.bin文件
+- 也可参考readme直接从huggingface下载并运行
 """
 import os
 import torch

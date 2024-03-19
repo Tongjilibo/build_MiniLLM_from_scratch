@@ -1,6 +1,6 @@
 #! -*- coding: utf-8 -*-
 """
-预训练-推理
+预训练-推理：使用的是模型保存下来的pt文件
 """
 import os
 import torch
@@ -9,11 +9,11 @@ from bert4torch.snippets import DottableDict
 from transformers import AutoTokenizer
 
 args = DottableDict()
-args.max_length = 1024
+args.max_length = 256  # 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-NoWudao'
+args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao/final/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
