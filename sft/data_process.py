@@ -10,7 +10,7 @@ import json
 
 from torch.utils.data import Dataset
 import torch
-from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn, parallel_apply
+from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn, parallel_apply, log_info_once
 from typing import Literal
 import re
 from tqdm import tqdm
@@ -24,12 +24,14 @@ HUMAN = '<human>'
 ROBOT = '<robot>'
 PAD_TOKEN_ID = 0
 EOS_TOKEN_ID = 2
-MAX_SAMPLES = None  # None表示不限制，不为None用于测试小样本快速验证
+MAX_SAMPLES = 10000  # None表示不限制，不为None用于测试小样本快速验证
 if MAX_SAMPLES is not None:
-    log_warn(f'Only use {MAX_SAMPLES} samples for each sft file')
+    log_warn(f'Only use {MAX_SAMPLES} samples for each sft dataset.')
+else:
+    log_warn(f'Use all samples for each sft dataset, may be slow.')
 
 # 多进程参数, linux下可用
-USE_PARALLEL = True if os.name == 'nt' else True
+USE_PARALLEL = False if os.name == 'nt' else True
 WORKERS = 8 # os.cpu_count()
 MAX_QUEUE_SIZE = 2000
 
@@ -84,9 +86,11 @@ def collect_tokens(process_one, data_path, data_format:Literal['jsonl', 'json']=
                 break
 
     # 是否并行处理数据
-    if not USE_PARALLEL:        
+    if not USE_PARALLEL:
+        log_info_once('Use single process to process data, maybe slow')
         train_samples = [process_one(line) for line in data]
     else:
+        log_info_once('Use multiprocess to accelerate data process')
         train_samples = parallel_apply(func=process_one, iterable=data, workers=WORKERS, max_queue_size=MAX_QUEUE_SIZE,
                                     dummy=False, callback=None, unordered=False)
     train_samples = [i for i in train_samples if i[0] is not None and len(i[0])>1]
@@ -345,20 +349,20 @@ if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
     with Timeit() as ti:
         # pass
-        process_alpaca('/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup@train_0.5M_CN/Belle_open_source_0.5M.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup@train_1M_CN/Belle_open_source_1M.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup@school_math_0.25M/school_math_0.25M.json', tokenizer)
-        process_deepctrl('/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
-        process_moss002('/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
-        process_moss002('/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_honesty.json', tokenizer)
-        process_moss003('/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
-        process_moss003('/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/shareAI@CodeChat/continue_zh.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/shareAI@ShareGPT-Chinese-English-90k/common_zh_70k.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/shareAI@ShareGPT-Chinese-English-90k/computer_en_26k_continue.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/shareAI@ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/shareAI@ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl', tokenizer)
-        process_firefly('/data/corpus/sft/common/YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
+        process_alpaca('/data/corpus/sft/common/alpaca-zh/alpaca_gpt4_data_zh.json', tokenizer)
+        process_belle('/data/corpus/sft/common/BelleGroup/Belle_open_source_0.5M.json', tokenizer)
+        process_belle('/data/corpus/sft/common/BelleGroup/Belle_open_source_1M.json', tokenizer)
+        process_belle('/data/corpus/sft/common/BelleGroup/school_math_0.25M.json', tokenizer)
+        process_deepctrl('/data/corpus/sft/common/deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
+        process_moss002('/data/corpus/sft/common/moss-002-sft-data/zh_helpfulness.json', tokenizer)
+        process_moss002('/data/corpus/sft/common/moss-002-sft-data/zh_honesty.json', tokenizer)
+        process_moss003('/data/corpus/sft/common/moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
+        process_moss003('/data/corpus/sft/common/moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/CodeChat/continue_zh.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/CodeChat/continue_zh_2.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/common_zh_70k.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/computer_en_26k_continue.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl', tokenizer)
+        process_firefly('/data/corpus/sft/common/firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
