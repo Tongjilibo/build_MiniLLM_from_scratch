@@ -25,25 +25,26 @@ from glob import glob
 args = DottableDict()
 args.include_wudao_corpus = False
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
-args.lr = 3e-4  # 不含悟道的使用的是3e-4, 含悟道的使用的1.5e-4
-args.batch_size = 32
+args.lr = 1.5e-4  # 不含悟道的使用的是3e-4, 含悟道的使用的1.5e-4
+args.batch_size = 16
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
-args.max_length = 1024
+args.max_length = 896
 args.epochs = 1
 args.weight_decay = 0.1
 args.interval = 2000
 args.torch_dtype = None  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
 args.data_path = '../data/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/bert4torch_config.json'
+args.config_path = '../config/bert4torch_1_1B_config.json'
 args.resume_path = None
 
 if args.include_wudao_corpus:
-    args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao'
+    args.save_dir = '../ckpt_0319/iniLLM-L12_H1024_A8-NoWudao'
     args.filenames = [i for i in glob(args.data_path, recursive=True)]
 else:
-    args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-NoWudao'
+    args.save_dir = '../ckpt_0319/iniLLM-L12_H1024_A8-NoWudao'
+
     args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i]
 
 
@@ -55,7 +56,7 @@ class MyDataset(Dataset):
         self.token_size, self.smp_size = 0, 0
         for fi, filename in enumerate(filenames):
             with open(filename, 'r') as f:
-                nbytes = f.seek(0,2)
+                nbytes = f.seek(0, 2)
                 flen = f.tell() // np.dtype('uint16').itemsize
             self.token_size += flen
             self.index_map.update({self.smp_size + i: (fi, i) for i in range(flen // args.max_length)})
@@ -127,7 +128,8 @@ optimizer = optim.AdamW(
 )
 
 scheduler = get_linear_schedule_with_warmup(
-    optimizer, 5000,
+    optimizer,
+    5000,
     len(train_dataloader) * args.epochs // args.grad_accumulation_steps
 )
 
