@@ -7,11 +7,10 @@
 '''
 import json
 
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 import torch
-from bert4torch.snippets import sequence_padding
+from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn, parallel_apply
 import re
-from torch4keras.snippets.log import log_info, log_warn
 from tqdm import tqdm
 import os
 import pickle
@@ -26,6 +25,11 @@ EOS_TOKEN_ID = 2
 MAX_SAMPLES = None  # None表示不限制，不为None用于测试小样本快速验证
 if MAX_SAMPLES is not None:
     log_warn(f'Only use {MAX_SAMPLES} samples for each sft file')
+
+# 多进程参数, linux下可用
+USE_PARALLEL = False if os.name == 'nt' else True
+WORKERS = 8 # os.cpu_count()
+MAX_QUEUE_SIZE = 2000
 
 
 def get_probable_samples(filenames):
@@ -57,60 +61,72 @@ def get_probable_samples(filenames):
     return total_samples
 
 
+def collect_tokens(process_one, data):
+    '''各个函数通用的处理token的方式'''
+    if not USE_PARALLEL:
+        train_samples = []
+        for line in data:
+            train_samples.append(process_one(line))
+            if (MAX_SAMPLES is not None) and (len(train_samples) >= MAX_SAMPLES):
+                break
+    else:
+        train_samples = parallel_apply(func=process_one, iterable=data, workers=WORKERS, max_queue_size=MAX_QUEUE_SIZE,
+                                    dummy=False, callback=None, unordered=False)
+        train_samples = [i for i in train_samples if i[0] is not None]
+        if MAX_SAMPLES is not None:
+            train_samples = train_samples[:MAX_SAMPLES]
+    print(len(train_samples))
+    # print(train_samples[0])
+    return train_samples
+
+
 def process_alpaca(data_path, tokenizer):
     '''alpaca_gpt4_data_zh.json'''
     with open(data_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    res = []
-    for per in data:
+    def process_one(per):
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['output'], add_special_tokens=False)
         if len(q) + len(a) >= MAX_LENGTH:
-            continue
+            return None, None
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
 
         assert len(input_ids) == len(labels)
-        res.append((input_ids, labels))
-        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
-            break
-    return res
+        return input_ids, labels
+
+    return collect_tokens(process_one, data)
 
 
 def process_belle(data_path, tokenizer):
     '''Belle_open_source_1M.json'''
-    f = open(data_path, 'r', encoding='utf-8')
+    data = open(data_path, 'r', encoding='utf-8').readlines()
 
-    res = []
-    while True:
-        line = f.readline()
+    def process_one(line):
         if not line:
-            break
+            return None, None
         per = json.loads(line)
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['output'], add_special_tokens=False)
         if len(q) + len(a) >= MAX_LENGTH:
-            continue
+            return None, None
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
 
         assert len(input_ids) == len(labels)
-        res.append((input_ids, labels))
-        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
-            break
-    return res
+        return input_ids, labels
+    
+    return collect_tokens(process_one, data)
 
 
 def process_deepctrl(data_path, tokenizer):
     '''deepctrl-sft-data'''
-    f = open(data_path, 'r', encoding='utf-8')
+    data = open(data_path, 'r', encoding='utf-8').readlines()
 
-    res = []
-    while True:
-        line = f.readline()
+    def process_one(line):
         if not line:
-            break
+            return None, None
         per = json.loads(line)
 
         input_ids, labels = [], []
@@ -119,7 +135,7 @@ def process_deepctrl(data_path, tokenizer):
             a = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
             if len(input_ids + q + a) >= MAX_LENGTH:
-                break
+                return None, None
             input_ids.extend(q + a)
             labels.extend([PAD_TOKEN_ID] * (len(q) - 1) + a + [EOS_TOKEN_ID])
 
@@ -129,12 +145,11 @@ def process_deepctrl(data_path, tokenizer):
         labels.extend([PAD_TOKEN_ID] * (len(q) - 1) + a + [EOS_TOKEN_ID])
 
         if len(input_ids) >= MAX_LENGTH:
-            continue
+            return None, None
         assert len(input_ids) == len(labels)
-        res.append((input_ids, labels))
-        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
-            break
-    return res
+        return input_ids, labels
+
+    return collect_tokens(process_one, data)
 
 
 def process_moss002(data_path, tokenizer):
@@ -142,8 +157,7 @@ def process_moss002(data_path, tokenizer):
     with open(data_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    res = []
-    for per in data:
+    def process_one(per):
         history = re.split(r'<eoh> \[MOSS\]: |<eoa> \[Human\]: |\[Human\]: |<eoa>', per['plain_text'])
         history = [i.strip() for i in history if i]
         input_ids, labels = [], []
@@ -157,23 +171,20 @@ def process_moss002(data_path, tokenizer):
             labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
 
         if len(input_ids) >= MAX_LENGTH:
-            continue
+            return None, None
         assert len(input_ids) == len(labels)
-        res.append((input_ids, labels))
-        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
-            break
-    return res
+        return input_ids, labels
+
+    return collect_tokens(process_one, data)
 
 
 def process_moss003(data_path, tokenizer):
     '''fnlp@moss-003-sft-data'''
-    f = open(data_path, 'r', encoding='utf-8')
+    data = open(data_path, 'r', encoding='utf-8').readlines()
 
-    res = []
-    while True:
-        line = f.readline()
+    def process_one(line):
         if not line:
-            break
+            return None, None
         per = json.loads(line)
         input_ids, labels = [], []
         for turn in per['chat'].values():
@@ -193,23 +204,20 @@ def process_moss003(data_path, tokenizer):
             labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
 
         if len(input_ids) >= MAX_LENGTH:
-            continue
+            return None, None
         assert len(input_ids) == len(labels)
-        res.append((input_ids, labels))
-        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
-            break
-    return res
+        return input_ids, labels
+
+    return collect_tokens(process_one, data)
 
 
 def process_shareai(data_path, tokenizer):
     '''shareAI'''
-    f = open(data_path, 'r', encoding='utf-8')
+    data = open(data_path, 'r', encoding='utf-8').readlines()
 
-    res = []
-    while True:
-        line = f.readline()
+    def process_one(line):
         if not line:
-            break
+            return None, None
         per = json.loads(line)
         input_ids, labels = [], []
         for turn in per['conversation']:
@@ -225,35 +233,31 @@ def process_shareai(data_path, tokenizer):
             labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
 
         if len(input_ids) >= MAX_LENGTH:
-            continue
+            return None, None
         assert len(input_ids) == len(labels)
-        res.append((input_ids, labels))
-        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
-            break
-    return res
+        return input_ids, labels
+
+    return collect_tokens(process_one, data)
 
 
 def process_firefly(data_path, tokenizer):
     '''YeungNLP@firefly-train-1.1M'''
-    f = open(data_path, 'r', encoding='utf-8')
+    data = open(data_path, 'r', encoding='utf-8').readlines()
 
-    res = []
-    while True:
-        line = f.readline()
+    def process_one(line):
         if not line:
-            break
+            return None, None
         per = json.loads(line)
         q = tokenizer.encode(HUMAN + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['target'], add_special_tokens=False)
         if len(q) + len(a) >= MAX_LENGTH:
-            continue
+            return None, None
         input_ids = q + a
         labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
         assert len(input_ids) == len(labels)
-        res.append((input_ids, labels))
-        if (MAX_SAMPLES is not None) and (len(res) >= MAX_SAMPLES):
-            break
-    return res
+        return input_ids, labels
+
+    return collect_tokens(process_one, data)
 
 
 MAPPING = {
@@ -321,3 +325,22 @@ def collate_train_fn(batch):
     batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=PAD_TOKEN_ID), dtype=torch.long)
     batch_labels = torch.tensor(sequence_padding(batch_labels, value=PAD_TOKEN_ID), dtype=torch.long)
     return [batch_token_ids], batch_labels
+
+
+if __name__ == '__main__':
+    # 获取可能
+    get_probable_samples(['/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json'])
+
+    # 测试各个文件的处理
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
+    with Timeit() as ti:
+        pass
+        # process_alpaca('/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json', tokenizer)
+        # process_belle('/data/corpus/sft/common/BelleGroup@train_0.5M_CN/Belle_open_source_0.5M.json', tokenizer)
+        # process_deepctrl('/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
+        process_moss002('/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
+        # process_moss003('/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
+        # process_moss003('/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
+        # process_shareai('/data/corpus/sft/common/shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
+        # process_firefly('/data/corpus/sft/common/YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
