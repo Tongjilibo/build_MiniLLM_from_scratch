@@ -5,6 +5,10 @@
 torchrun --standalone --nproc_per_node=4 sft.py
 多机多卡训练
 NCCL_DEBUG=INFO TORCH_NCCL_BLOCKING_WAIT=1 NCCL_IB_DISABLE=1 NCCL_SOCKET_IFNAME=你的网卡类型  torchrun --nnodes=你的主机数量 --node_rank=编号 --master_addr=你的master节点IP --master_port=12346 --nproc_per_node=8 sft.py
+
+注意事项：
+1. max_length, 需要对应修改data_process中的MAX_LENGTH
+2. data_process下有个MAX_SAMPLES参数, 可设置比如1000先在小数据集上验证跑通
 """
 import torch.nn as nn
 import torch
@@ -34,16 +38,19 @@ args.interval = 2000
 args.torch_dtype = None  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.config_path = '../config'
-args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-NoWudao/final/model.pt'
-args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-NoWudao-SFT'
-args.dataset_path = '/share/home/zyx/Dataset/sft_dataset/'
+args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao/final/model.pt'
+args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao-SFT'
+args.dataset_path = '/data/corpus/sft/common/'
 args.dataset_save_path = '../sft_data/'
 
+
+# ========================加载数据集========================
+# 这可能需要很久，因为数据集很大，按照实际情况按需使用，比如只使用alpaca-zh
 filenames = [
     'alpaca-zh/alpaca_gpt4_data_zh.json',
-    'BelleGroup/Belle_open_source_0.5M.jsonl',
-    'BelleGroup/Belle_open_source_1M.jsonl',
-    'BelleGroup/school_math_0.25M.jsonl',
+    'BelleGroup/Belle_open_source_0.5M.json',
+    'BelleGroup/Belle_open_source_1M.json',
+    'BelleGroup/school_math_0.25M.json',
     'deepctrl-sft-data/sft_data_zh.jsonl',
     'moss-002-sft-data/zh_helpfulness.json',
     'moss-002-sft-data/zh_honesty.json',
@@ -57,10 +64,6 @@ filenames = [
     'ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
     'firefly-train-1.1M/firefly-train-1.1M.jsonl'
 ]
-
-# ========================加载数据集========================
-
-### 这可能需要很久，因为数据集很大
 
 tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
 
@@ -82,6 +85,8 @@ train_dataloader = DataLoader(
     collate_fn=collate_train_fn
 )
 
+
+# ========================加载预训练模型========================
 model = build_transformer_model(
     config_path=args.config_path,
     checkpoint_path=None,
@@ -120,6 +125,7 @@ class CrossEntropyLoss(nn.CrossEntropyLoss):
         return loss.to(raw_dtyps)
 
 
+# ========================配置loss, optimizer等参数========================
 optim_groups = get_weight_decay_optim_groups(model, weight_decay=args.weight_decay)
 use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
@@ -140,6 +146,7 @@ model.compile(
     clip_grad_norm=1.0,
     mixed_precision=True if args.torch_dtype is None else False
 )
+
 
 if __name__ == '__main__':
     logger = Logger(args.save_dir + '/log_sft.log')
