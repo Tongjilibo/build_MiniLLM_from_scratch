@@ -43,7 +43,6 @@ def build_prompt(history):
         prompt += f"\n\n续写：{response}"
     return prompt
 
-
 if __name__ == '__main__':
     history = []
     clear_command = 'cls' if os.name == 'nt' else 'clear'

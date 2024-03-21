@@ -67,7 +67,6 @@ class MyDataset(Dataset):
 
     def __len__(self):
         return self.smp_size
-
     def __getitem__(self, index: int):
         fi, i = self.index_map[index]
         sample = self.data[fi][i]

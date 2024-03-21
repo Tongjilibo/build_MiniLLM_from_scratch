@@ -1,13 +1,13 @@
 ''' 数据处理模块
-本模块不用跑，跑sft的时候，会使用到本模块处理数据和保存到硬盘
+处理数据, tokenize并保存到硬盘
 
 1. 增加HUMAN和ROBOT标记，可以用于多轮对话问答
 2. 不限制prompt和answer的长度，仅限制总长度，可容纳更多的样本
 3. 多轮对话中，同时计算多个answer的loss, 提升训练效率
 4. linux下可调用多进程处理，加快数据处理速度，推荐！
 '''
-import json
 
+import json
 from torch.utils.data import Dataset
 import torch
 from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn, parallel_apply, log_info_once
@@ -17,8 +17,10 @@ from tqdm import tqdm
 import os
 import pickle
 import random
+from transformers import AutoTokenizer
 
 
+# ================================数据处理的参数================================
 MAX_LENGTH = 1024
 HUMAN = '<human>'
 ROBOT = '<robot>'
@@ -29,13 +31,38 @@ if MAX_SAMPLES is not None:
     log_warn(f'Only use {MAX_SAMPLES} samples for each sft dataset.')
 else:
     log_warn(f'Use all samples for each sft dataset, may be slow.')
+DEBUG = False
 
 # 多进程参数, linux下可用
 USE_PARALLEL = False if os.name == 'nt' else True
 WORKERS = 8 # os.cpu_count()
 MAX_QUEUE_SIZE = 2000
 
+DATASET_SRC_DIR = '/data/corpus/sft/common/'  # 源数据路径
+DATASET_SAVE_DIR = '../sft_data'  # 处理完的数据保存路径
+# 待处理的数据集，因为数据集很大，按照实际情况按需使用，比如只使用alpaca-zh
+FILE_NAMES = [
+    'alpaca-zh/alpaca_gpt4_data_zh.json',
+    'BelleGroup/Belle_open_source_0.5M.json',
+    'BelleGroup/Belle_open_source_1M.json',
+    'BelleGroup/school_math_0.25M.json',
+    'deepctrl-sft-data/sft_data_zh.jsonl',
+    'moss-002-sft-data/zh_helpfulness.json',
+    'moss-002-sft-data/zh_honesty.json',
+    'moss-003-sft-data/moss-003-sft-no-tools.jsonl',
+    'CodeChat/continue_zh.jsonl',
+    'CodeChat/continue_zh_2.jsonl',
+    'ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
+    'ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
+    'ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
+    'ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
+    'ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
+    'firefly-train-1.1M/firefly-train-1.1M.jsonl'
+]
+tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
 
+
+# ================================数据处理过程================================
 def get_probable_samples(filenames):
     '''获取可能的训练样本总量'''
 
@@ -96,10 +123,13 @@ def collect_tokens(process_one, data_path, data_format:Literal['jsonl', 'json']=
     train_samples = [i for i in train_samples if i[0] is not None and len(i[0])>1]
 
     # debug使用
-    # print('='*60)
-    # print('data_path:', data_path)
-    # print('len(train_samples):', len(train_samples))
-    # print('sample[0]:', train_samples[0])
+    if DEBUG:
+        print('='*60)
+        print('data_path:', data_path)
+        print('len(train_samples):', len(train_samples))
+        print('sample[0]:', train_samples[0])
+        print('='*60)
+        print()
     return train_samples
 
 
@@ -310,14 +340,8 @@ class SFTDataset(Dataset):
         all_res = []
         for filename in filenames:
             save_path = os.path.join(self.save_dir, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
-            if os.path.exists(save_path):
-                with open(save_path, 'rb') as f:
-                    res = pickle.load(f)
-            else:
-                res = MAPPING[filename](self.dataset_dir + filename, self.tokenizer)
-                os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                with open(save_path, 'wb') as f:
-                    pickle.dump(all_res, f)
+            with open(save_path, 'rb') as f:
+                res = pickle.load(f)
             log_info(f'Loading {filename}: len={len(res)}')
             all_res.extend(res)
         random.shuffle(all_res)
@@ -331,7 +355,6 @@ class SFTDataset(Dataset):
     def __getitem__(self, index: int):
         return self.data[index]
 
-
 def collate_train_fn(batch):
     batch_token_ids = [i[0] for i in batch]
     batch_labels = [i[1] for i in batch]
@@ -340,29 +363,22 @@ def collate_train_fn(batch):
     return [batch_token_ids], batch_labels
 
 
-if __name__ == '__main__':
-    # 获取可能
-    # get_probable_samples(['/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json'])
+def main():
+    '''数据处理主函数
+    :param FILE_NAMES: 处理的数据集名称
+    :param DATASET_SRC_DIR: 数据源文件夹
+    :param DATASET_SAVE_DIR: 数据保存的文件夹
+    :param tokenizer: tokenizer
+    '''
+    for filename in FILE_NAMES:
+        save_path = os.path.join(DATASET_SAVE_DIR, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
+        res = MAPPING[filename](DATASET_SRC_DIR + filename, tokenizer)
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(save_path, 'wb') as f:
+            pickle.dump(res, f)
+        log_info(f'Loading {filename}: len={len(res)}')
 
-    # 测试各个文件的处理
-    from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
+
+if __name__ == '__main__':
     with Timeit() as ti:
-        # pass
-        process_alpaca('/data/corpus/sft/common/alpaca-zh/alpaca_gpt4_data_zh.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup/Belle_open_source_0.5M.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup/Belle_open_source_1M.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup/school_math_0.25M.json', tokenizer)
-        process_deepctrl('/data/corpus/sft/common/deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
-        process_moss002('/data/corpus/sft/common/moss-002-sft-data/zh_helpfulness.json', tokenizer)
-        process_moss002('/data/corpus/sft/common/moss-002-sft-data/zh_honesty.json', tokenizer)
-        process_moss003('/data/corpus/sft/common/moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
-        process_moss003('/data/corpus/sft/common/moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/CodeChat/continue_zh.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/CodeChat/continue_zh_2.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/common_zh_70k.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/computer_en_26k_continue.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl', tokenizer)
-        process_firefly('/data/corpus/sft/common/firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
+        main()
