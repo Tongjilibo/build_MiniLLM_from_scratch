@@ -29,6 +29,7 @@ if MAX_SAMPLES is not None:
     log_warn(f'Only use {MAX_SAMPLES} samples for each sft dataset.')
 else:
     log_warn(f'Use all samples for each sft dataset, may be slow.')
+DEBUG = False
 
 # 多进程参数, linux下可用
 USE_PARALLEL = False if os.name == 'nt' else True
@@ -96,10 +97,13 @@ def collect_tokens(process_one, data_path, data_format:Literal['jsonl', 'json']=
     train_samples = [i for i in train_samples if i[0] is not None and len(i[0])>1]
 
     # debug使用
-    # print('='*60)
-    # print('data_path:', data_path)
-    # print('len(train_samples):', len(train_samples))
-    # print('sample[0]:', train_samples[0])
+    if DEBUG:
+        print('='*60)
+        print('data_path:', data_path)
+        print('len(train_samples):', len(train_samples))
+        print('sample[0]:', train_samples[0])
+        print('='*60)
+        print()
     return train_samples
 
 
@@ -341,28 +345,30 @@ def collate_train_fn(batch):
 
 
 if __name__ == '__main__':
-    # 获取可能
-    # get_probable_samples(['/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json'])
+    DEBUG = True
+    dataset_path = '/home/hfai/h01305/data/corpus/sft/common'
+
+    # 快速统计数据集数量
+    # get_probable_samples([dataset_path + '/fnlp@moss-002-sft-data/zh_helpfulness.json'])
 
     # 测试各个文件的处理
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
     with Timeit() as ti:
-        # pass
-        process_alpaca('/data/corpus/sft/common/alpaca-zh/alpaca_gpt4_data_zh.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup/Belle_open_source_0.5M.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup/Belle_open_source_1M.json', tokenizer)
-        process_belle('/data/corpus/sft/common/BelleGroup/school_math_0.25M.json', tokenizer)
-        process_deepctrl('/data/corpus/sft/common/deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
-        process_moss002('/data/corpus/sft/common/moss-002-sft-data/zh_helpfulness.json', tokenizer)
-        process_moss002('/data/corpus/sft/common/moss-002-sft-data/zh_honesty.json', tokenizer)
-        process_moss003('/data/corpus/sft/common/moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
-        process_moss003('/data/corpus/sft/common/moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/CodeChat/continue_zh.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/CodeChat/continue_zh_2.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/common_zh_70k.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/computer_en_26k_continue.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl', tokenizer)
-        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl', tokenizer)
-        process_firefly('/data/corpus/sft/common/firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
+        process_alpaca(dataset_path + '/alpaca-zh/alpaca_gpt4_data_zh.json', tokenizer)
+        process_belle(dataset_path + '/BelleGroup/Belle_open_source_0.5M.json', tokenizer)
+        process_belle(dataset_path + '/BelleGroup/Belle_open_source_1M.json', tokenizer)
+        process_belle(dataset_path + '/BelleGroup/school_math_0.25M.json', tokenizer)
+        process_deepctrl(dataset_path + '/deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
+        process_moss002(dataset_path + '/moss-002-sft-data/zh_helpfulness.json', tokenizer)
+        process_moss002(dataset_path + '/moss-002-sft-data/zh_honesty.json', tokenizer)
+        process_moss003(dataset_path + '/moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
+        process_moss003(dataset_path + '/moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
+        process_shareai(dataset_path + '/CodeChat/continue_zh.jsonl', tokenizer)
+        process_shareai(dataset_path + '/CodeChat/continue_zh_2.jsonl', tokenizer)
+        process_shareai(dataset_path + '/ShareGPT-Chinese-English-90k/common_zh_70k.jsonl', tokenizer)
+        process_shareai(dataset_path + '/ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl', tokenizer)
+        process_shareai(dataset_path + '/ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl', tokenizer)
+        process_shareai(dataset_path + '/ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl', tokenizer)
+        process_shareai(dataset_path + '/ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl', tokenizer)
+        process_firefly(dataset_path + '/firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)

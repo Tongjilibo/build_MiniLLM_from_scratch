@@ -40,7 +40,7 @@ args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.config_path = '../config'
 args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao/final/model.pt'
 args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao-SFT'
-args.dataset_path = '/data/corpus/sft/common/'
+args.dataset_path = '/home/hfai/h01305/data/corpus/sft/common/'
 args.dataset_save_path = '../sft_data/'
 
 
@@ -155,7 +155,7 @@ if __name__ == '__main__':
         epoch_or_step='step',
         min_max='min',
         verbose=0,
-        nterval=args.interval,
+        interval=args.interval,
         save_dir=args.save_dir + '/{step}_{loss:.4f}',
         max_save_count=5,
         save_on_train_end=True
