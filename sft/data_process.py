@@ -4,12 +4,14 @@
 1. 增加HUMAN和ROBOT标记，可以用于多轮对话问答
 2. 不限制prompt和answer的长度，仅限制总长度，可容纳更多的样本
 3. 多轮对话中，同时计算多个answer的loss, 提升训练效率
+4. linux下可调用多进程处理，加快数据处理速度，推荐！
 '''
 import json
 
 from torch.utils.data import Dataset
 import torch
-from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn, parallel_apply
+from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn, parallel_apply, log_info_once
+from typing import Literal
 import re
 from tqdm import tqdm
 import os
@@ -22,9 +24,11 @@ HUMAN = '<human>'
 ROBOT = '<robot>'
 PAD_TOKEN_ID = 0
 EOS_TOKEN_ID = 2
-MAX_SAMPLES = None  # None表示不限制，不为None用于测试小样本快速验证
+MAX_SAMPLES = 10000  # None表示不限制，不为None用于测试小样本快速验证
 if MAX_SAMPLES is not None:
-    log_warn(f'Only use {MAX_SAMPLES} samples for each sft file')
+    log_warn(f'Only use {MAX_SAMPLES} samples for each sft dataset.')
+else:
+    log_warn(f'Use all samples for each sft dataset, may be slow.')
 
 # 多进程参数, linux下可用
 USE_PARALLEL = False if os.name == 'nt' else True
@@ -42,7 +46,7 @@ def get_probable_samples(filenames):
         bar.refresh()
         bar.set_description(filename.split('/')[-1])
 
-        if any([n in filename for n in ['alpaca_gpt4_data_zh', 'fnlp@moss-002-sft-data']]):
+        if any([n in filename for n in ['alpaca_gpt4_data_zh', 'moss-002-sft-data']]):
             # 　json格式文件
             data = json.load(open(filename, 'r', encoding='utf-8'))
             if MAX_SAMPLES is not None:
@@ -61,29 +65,46 @@ def get_probable_samples(filenames):
     return total_samples
 
 
-def collect_tokens(process_one, data):
+def collect_tokens(process_one, data_path, data_format:Literal['jsonl', 'json']='jsonl'):
     '''各个函数通用的处理token的方式'''
-    if not USE_PARALLEL:
-        train_samples = []
-        for line in data:
-            train_samples.append(process_one(line))
-            if (MAX_SAMPLES is not None) and (len(train_samples) >= MAX_SAMPLES):
-                break
+    # 读入数据，分json和jsonl两种格式
+    if data_format == 'json':
+        with open(data_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if MAX_SAMPLES is not None:
+            data = data[:MAX_SAMPLES]
+    
     else:
+        data = []
+        f = open(data_path, 'r', encoding='utf-8')
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            data.append(line)
+            if (MAX_SAMPLES is not None) and (len(data) >= MAX_SAMPLES):
+                break
+
+    # 是否并行处理数据
+    if not USE_PARALLEL:
+        log_info_once('Use single process to process data, maybe slow')
+        train_samples = [process_one(line) for line in data]
+    else:
+        log_info_once('Use multiprocess to accelerate data process')
         train_samples = parallel_apply(func=process_one, iterable=data, workers=WORKERS, max_queue_size=MAX_QUEUE_SIZE,
                                     dummy=False, callback=None, unordered=False)
-        train_samples = [i for i in train_samples if i[0] is not None]
-        if MAX_SAMPLES is not None:
-            train_samples = train_samples[:MAX_SAMPLES]
-    print(len(train_samples))
-    # print(train_samples[0])
+    train_samples = [i for i in train_samples if i[0] is not None and len(i[0])>1]
+
+    # debug使用
+    # print('='*60)
+    # print('data_path:', data_path)
+    # print('len(train_samples):', len(train_samples))
+    # print('sample[0]:', train_samples[0])
     return train_samples
 
 
 def process_alpaca(data_path, tokenizer):
     '''alpaca_gpt4_data_zh.json'''
-    with open(data_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
 
     def process_one(per):
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
@@ -96,12 +117,11 @@ def process_alpaca(data_path, tokenizer):
         assert len(input_ids) == len(labels)
         return input_ids, labels
 
-    return collect_tokens(process_one, data)
+    return collect_tokens(process_one, data_path, data_format='json')
 
 
 def process_belle(data_path, tokenizer):
     '''Belle_open_source_1M.json'''
-    data = open(data_path, 'r', encoding='utf-8').readlines()
 
     def process_one(line):
         if not line:
@@ -117,12 +137,11 @@ def process_belle(data_path, tokenizer):
         assert len(input_ids) == len(labels)
         return input_ids, labels
     
-    return collect_tokens(process_one, data)
+    return collect_tokens(process_one, data_path, data_format='jsonl')
 
 
 def process_deepctrl(data_path, tokenizer):
     '''deepctrl-sft-data'''
-    data = open(data_path, 'r', encoding='utf-8').readlines()
 
     def process_one(line):
         if not line:
@@ -149,13 +168,11 @@ def process_deepctrl(data_path, tokenizer):
         assert len(input_ids) == len(labels)
         return input_ids, labels
 
-    return collect_tokens(process_one, data)
+    return collect_tokens(process_one, data_path, data_format='jsonl')
 
 
 def process_moss002(data_path, tokenizer):
     '''fnlp@moss-002-sft-data'''
-    with open(data_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
 
     def process_one(per):
         history = re.split(r'<eoh> \[MOSS\]: |<eoa> \[Human\]: |\[Human\]: |<eoa>', per['plain_text'])
@@ -175,12 +192,11 @@ def process_moss002(data_path, tokenizer):
         assert len(input_ids) == len(labels)
         return input_ids, labels
 
-    return collect_tokens(process_one, data)
+    return collect_tokens(process_one, data_path, data_format='json')
 
 
 def process_moss003(data_path, tokenizer):
     '''fnlp@moss-003-sft-data'''
-    data = open(data_path, 'r', encoding='utf-8').readlines()
 
     def process_one(line):
         if not line:
@@ -208,12 +224,11 @@ def process_moss003(data_path, tokenizer):
         assert len(input_ids) == len(labels)
         return input_ids, labels
 
-    return collect_tokens(process_one, data)
+    return collect_tokens(process_one, data_path, data_format='jsonl')
 
 
 def process_shareai(data_path, tokenizer):
     '''shareAI'''
-    data = open(data_path, 'r', encoding='utf-8').readlines()
 
     def process_one(line):
         if not line:
@@ -237,12 +252,11 @@ def process_shareai(data_path, tokenizer):
         assert len(input_ids) == len(labels)
         return input_ids, labels
 
-    return collect_tokens(process_one, data)
+    return collect_tokens(process_one, data_path, data_format='jsonl')
 
 
 def process_firefly(data_path, tokenizer):
     '''YeungNLP@firefly-train-1.1M'''
-    data = open(data_path, 'r', encoding='utf-8').readlines()
 
     def process_one(line):
         if not line:
@@ -257,14 +271,14 @@ def process_firefly(data_path, tokenizer):
         assert len(input_ids) == len(labels)
         return input_ids, labels
 
-    return collect_tokens(process_one, data)
+    return collect_tokens(process_one, data_path, data_format='jsonl')
 
 
 MAPPING = {
     'alpaca-zh/alpaca_gpt4_data_zh.json': process_alpaca,
-    'BelleGroup/Belle_open_source_1M.jsonl': process_belle,
-    'BelleGroup/Belle_open_source_0.5M.jsonl': process_belle,
-    'BelleGroup/school_math_0.25M.jsonl': process_belle,
+    'BelleGroup/Belle_open_source_1M.json': process_belle,
+    'BelleGroup/Belle_open_source_0.5M.json': process_belle,
+    'BelleGroup/school_math_0.25M.json': process_belle,
     'deepctrl-sft-data/sft_data_zh.jsonl': process_deepctrl,
     'moss-002-sft-data/zh_helpfulness.json': process_moss002,
     'moss-002-sft-data/zh_honesty.json': process_moss002,
@@ -294,9 +308,8 @@ class SFTDataset(Dataset):
 
     def load_data(self, filenames):
         all_res = []
-        for filename in tqdm(filenames, desc='Load data'):
-            save_path = os.path.join(self.save_dir,
-                                     filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
+        for filename in filenames:
+            save_path = os.path.join(self.save_dir, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
             if os.path.exists(save_path):
                 with open(save_path, 'rb') as f:
                     res = pickle.load(f)
@@ -305,7 +318,7 @@ class SFTDataset(Dataset):
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 with open(save_path, 'wb') as f:
                     pickle.dump(all_res, f)
-            log_info(f'Loading {filename}: {len(res)}')
+            log_info(f'Loading {filename}: len={len(res)}')
             all_res.extend(res)
         random.shuffle(all_res)
 
@@ -329,18 +342,27 @@ def collate_train_fn(batch):
 
 if __name__ == '__main__':
     # 获取可能
-    get_probable_samples(['/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json'])
+    # get_probable_samples(['/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json'])
 
     # 测试各个文件的处理
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
     with Timeit() as ti:
-        pass
-        # process_alpaca('/data/corpus/sft/common/shibing624@alpaca-zh/alpaca_gpt4_data_zh.json', tokenizer)
-        # process_belle('/data/corpus/sft/common/BelleGroup@train_0.5M_CN/Belle_open_source_0.5M.json', tokenizer)
-        # process_deepctrl('/data/corpus/sft/common/deepctrl@deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
-        process_moss002('/data/corpus/sft/common/fnlp@moss-002-sft-data/zh_helpfulness.json', tokenizer)
-        # process_moss003('/data/corpus/sft/common/fnlp@moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
-        # process_moss003('/data/corpus/sft/common/fnlp@moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
-        # process_shareai('/data/corpus/sft/common/shareAI@CodeChat/continue_zh_2.jsonl', tokenizer)
-        # process_firefly('/data/corpus/sft/common/YeungNLP@firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
+        # pass
+        process_alpaca('/data/corpus/sft/common/alpaca-zh/alpaca_gpt4_data_zh.json', tokenizer)
+        process_belle('/data/corpus/sft/common/BelleGroup/Belle_open_source_0.5M.json', tokenizer)
+        process_belle('/data/corpus/sft/common/BelleGroup/Belle_open_source_1M.json', tokenizer)
+        process_belle('/data/corpus/sft/common/BelleGroup/school_math_0.25M.json', tokenizer)
+        process_deepctrl('/data/corpus/sft/common/deepctrl-sft-data/sft_data_zh.jsonl', tokenizer)
+        process_moss002('/data/corpus/sft/common/moss-002-sft-data/zh_helpfulness.json', tokenizer)
+        process_moss002('/data/corpus/sft/common/moss-002-sft-data/zh_honesty.json', tokenizer)
+        process_moss003('/data/corpus/sft/common/moss-003-sft-data/conversations_with_tools_with_inner_instruction_no_text2image_train_all_random_meta0.5_0.1_0.01_moss_0709.jsonl', tokenizer)
+        process_moss003('/data/corpus/sft/common/moss-003-sft-data/moss-003-sft-no-tools.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/CodeChat/continue_zh.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/CodeChat/continue_zh_2.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/common_zh_70k.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/computer_en_26k_continue.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl', tokenizer)
+        process_shareai('/data/corpus/sft/common/ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl', tokenizer)
+        process_firefly('/data/corpus/sft/common/firefly-train-1.1M/firefly-train-1.1M.jsonl', tokenizer)
