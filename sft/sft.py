@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from data_process import SFTDataset, collate_train_fn
+from data_process import SFTDataset, collate_train_fn, FILE_NAMES, DATASET_SRC_DIR, DATASET_SAVE_DIR
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModelDDP
 from bert4torch.snippets import DottableDict, get_weight_decay_optim_groups
@@ -40,38 +40,16 @@ args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.config_path = '../config'
 args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao/final/model.pt'
 args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao-SFT'
-args.dataset_path = '/home/hfai/h01305/data/corpus/sft/common/'
-args.dataset_save_path = '../sft_data/'
 
 
 # ========================加载数据集========================
-# 这可能需要很久，因为数据集很大，按照实际情况按需使用，比如只使用alpaca-zh
-filenames = [
-    'alpaca-zh/alpaca_gpt4_data_zh.json',
-    'BelleGroup/Belle_open_source_0.5M.json',
-    'BelleGroup/Belle_open_source_1M.json',
-    'BelleGroup/school_math_0.25M.json',
-    'deepctrl-sft-data/sft_data_zh.jsonl',
-    'moss-002-sft-data/zh_helpfulness.json',
-    'moss-002-sft-data/zh_honesty.json',
-    'moss-003-sft-data/moss-003-sft-no-tools.jsonl',
-    'CodeChat/continue_zh.jsonl',
-    'CodeChat/continue_zh_2.jsonl',
-    'ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
-    'ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
-    'ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
-    'ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
-    'ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
-    'firefly-train-1.1M/firefly-train-1.1M.jsonl'
-]
-
 tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
 
 dataset = SFTDataset(
-    filenames=filenames,
+    filenames=FILE_NAMES,
     tokenizer=tokenizer,
-    dataset_dir=args.dataset_path,
-    save_dir=args.dataset_save_path
+    dataset_dir=DATASET_SRC_DIR,
+    save_dir=DATASET_SAVE_DIR
 )
 
 train_dataloader = DataLoader(
