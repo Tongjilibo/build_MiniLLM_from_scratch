@@ -4,3 +4,7 @@ ckpt
 .vscode
 __pycache__
 *.pkl
+*.bin
+*.idea
+data
+test

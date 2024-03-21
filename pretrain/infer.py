@@ -1,6 +1,6 @@
 #! -*- coding: utf-8 -*-
 """
-预训练-推理
+预训练-推理：使用的是模型保存下来的pt文件
 """
 import os
 import torch
@@ -9,14 +9,11 @@ from bert4torch.snippets import DottableDict
 from transformers import AutoTokenizer
 
 args = DottableDict()
-args.compile = False
-args.eval_batch_size = 4
-args.pad_token_id = 0
-args.max_length = 128
+args.max_length = 256  # 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-args.model_path = '/home/hfai/h01305/projects/build_llm_from_scratch/ckpt/L12_H1024_A8-NoWudao/108000_3.1914/model.pt'
+args.model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao/final/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
@@ -25,15 +22,15 @@ model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))
 
 generation_config = {
     'tokenizer': tokenizer,
-    'tokenizer_config':  {'skip_special_tokens': True, 'add_special_tokens': False},
+    'tokenizer_config': {'skip_special_tokens': True, 'add_special_tokens': False},
     'start_id': None,
     'end_id': tokenizer.eos_token_id,
     'topk': 40,
     'topp': 0.8,
-    'repetition_penalty': 10,
-    'mode': 'random_sample', 
-    'max_length': args.max_length, 
-    'default_rtype': 'logits', 
+    'repetition_penalty': 1.1,
+    'mode': 'random_sample',
+    'max_length': args.max_length,
+    'default_rtype': 'logits',
     'use_states': True,
     'include_input': True
 }
