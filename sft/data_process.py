@@ -15,7 +15,6 @@ from typing import Literal
 import re
 from tqdm import tqdm
 import os
-import pickle
 import random
 from transformers import AutoTokenizer
 import numpy as np
@@ -27,7 +26,7 @@ HUMAN = '<human>'
 ROBOT = '<robot>'
 PAD_TOKEN_ID = 0
 EOS_TOKEN_ID = 2
-MAX_SAMPLES = 100000  # None表示不限制，不为None用于测试小样本快速验证
+MAX_SAMPLES = 1000  # None表示不限制，不为None用于测试小样本快速验证
 MAX_SAMPLES_PER_FILE = 100000  # 每个文件最多能容纳的样本量
 DEBUG = False
 
@@ -61,8 +60,8 @@ tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
 
 
 # ================================数据处理过程================================
-def get_probable_samples(filenames):
-    '''获取可能的训练样本总量'''
+def get_samples_count(filenames):
+    '''获取训练样本总量'''
 
     total_samples = 0
     bar = tqdm(total=len(filenames))
@@ -71,22 +70,12 @@ def get_probable_samples(filenames):
         bar.refresh()
         bar.set_description(filename.split('/')[-1])
 
-        if any([n in filename for n in ['alpaca_gpt4_data_zh', 'moss-002-sft-data']]):
-            # 　json格式文件
-            data = json.load(open(filename, 'r', encoding='utf-8'))
-            if MAX_SAMPLES is not None:
-                total_samples += min(len(data), MAX_SAMPLES)
-            else:
-                total_samples += len(data)
-        else:
-            # 每一行一个json文件
-            with open(filename, 'r', encoding='utf-8') as f:
-                for id_, _ in enumerate(f):
-                    if MAX_SAMPLES is not None and id_ >= MAX_SAMPLES:
-                        break
-                    total_samples += 1
+        # 每一行一个json文件
+        with open(filename, 'r', encoding='utf-8') as f:
+            for _ in enumerate(f):
+                total_samples += 1
     bar.close()
-    log_info(f'probable_total_samples={total_samples}')
+    log_info(f'total_samples={total_samples}')
     return total_samples
 
 
@@ -101,11 +90,13 @@ def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='
             log_info_once('Use multiprocess to accelerate data process')
             train_samples = parallel_apply(func=process_one, iterable=data_slice, workers=WORKERS, max_queue_size=MAX_QUEUE_SIZE,
                                         dummy=False, callback=None, unordered=False)
-        train_samples = [i for i in train_samples if i[0] is not None and len(i[0])>1]
+        train_samples = [{'input_ids':i[0], 'labels':i[1]} for i in train_samples if i[0] is not None and len(i[0])>1]
 
-        save_path = os.path.join(DATASET_SAVE_DIR, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + f'_{fi}.pkl')
-        with open(save_path, 'wb') as f:
-            pickle.dump(train_samples, f)
+        save_path = os.path.join(DATASET_SAVE_DIR, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + f'_{fi}.jsonl')
+        with open(save_path, 'w') as f:
+            for item in train_samples:
+                json.dump(item, f)  # 使用json.dump直接将字典转换为JSON格式写入文件
+                f.write('\n')  # 每个JSON对象后面添加换行符
         return len(train_samples)
 
 
@@ -354,20 +345,27 @@ MAPPING = {
 
 
 class SFTDataset(Dataset):
-    def __init__(self, datadir):
+    def __init__(self, datadir, verbose=1):
         super().__init__()
+        self.verbose = verbose
         self.data = self.load_data(datadir)
 
     def load_data(self, filenames):
         all_res = []
         for filename in filenames:
-            with open(filename, 'rb') as f:
-                res = pickle.load(f)
-            log_info(f'Loading {filename}: len={len(res)}')
+            res = []
+            f = open(filename, 'r', encoding='utf-8')
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                res.append(json.loads(line))
+            if self.verbose:
+                log_info(f'Loading {filename}: len={len(res)}')
             all_res.extend(res)
         random.shuffle(all_res)
-
-        log_info(f'Training samples: {len(all_res)}')
+        if self.verbose:
+            log_info(f'Training samples: {len(all_res)}')
         return all_res
 
     def __len__(self):
@@ -377,8 +375,8 @@ class SFTDataset(Dataset):
         return self.data[index]
 
 def collate_train_fn(batch):
-    batch_token_ids = [i[0] for i in batch]
-    batch_labels = [i[1] for i in batch]
+    batch_token_ids = [i['input_ids'] for i in batch]
+    batch_labels = [i['labels'] for i in batch]
     batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=PAD_TOKEN_ID), dtype=torch.long)
     batch_labels = torch.tensor(sequence_padding(batch_labels, value=PAD_TOKEN_ID), dtype=torch.long)
     return [batch_token_ids], batch_labels
