@@ -27,10 +27,6 @@ ROBOT = '<robot>'
 PAD_TOKEN_ID = 0
 EOS_TOKEN_ID = 2
 MAX_SAMPLES = 10000  # None表示不限制，不为None用于测试小样本快速验证
-if MAX_SAMPLES is not None:
-    log_warn(f'Only use {MAX_SAMPLES} samples for each sft dataset.')
-else:
-    log_warn(f'Use all samples for each sft dataset, may be slow.')
 DEBUG = False
 
 # 多进程参数, linux下可用
@@ -370,15 +366,19 @@ def main():
     :param DATASET_SAVE_DIR: 数据保存的文件夹
     :param tokenizer: tokenizer
     '''
-    for filename in FILE_NAMES:
-        save_path = os.path.join(DATASET_SAVE_DIR, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
-        res = MAPPING[filename](DATASET_SRC_DIR + filename, tokenizer)
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        with open(save_path, 'wb') as f:
-            pickle.dump(res, f)
-        log_info(f'Loading {filename}: len={len(res)}')
-
+    if MAX_SAMPLES is not None:
+        log_warn(f'Only use {MAX_SAMPLES} samples for each sft dataset.')
+    else:
+        log_warn(f'Use all samples for each sft dataset, may be slow.')
+    
+    with Timeit() as ti:
+        for filename in FILE_NAMES:
+            save_path = os.path.join(DATASET_SAVE_DIR, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + '.pkl')
+            res = MAPPING[filename](DATASET_SRC_DIR + filename, tokenizer)
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            with open(save_path, 'wb') as f:
+                pickle.dump(res, f)
+            ti.lap(name=f'{filename}: len={len(res)}'.ljust(70) + '-', reset=True)
 
 if __name__ == '__main__':
-    with Timeit() as ti:
-        main()
+    main()
