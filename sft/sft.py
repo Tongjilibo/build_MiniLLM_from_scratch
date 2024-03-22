@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from data_process import SFTDataset, collate_train_fn, FILE_NAMES, DATASET_SRC_DIR, DATASET_SAVE_DIR
+from data_process import SFTDataset, collate_train_fn, DATASET_SAVE_DIR
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModelDDP
 from bert4torch.snippets import DottableDict, get_weight_decay_optim_groups
@@ -22,7 +22,8 @@ from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard
 from bert4torch.optimizers import get_linear_schedule_with_warmup
 import os
 import inspect
-from transformers import AutoTokenizer
+from glob import glob
+
 
 # 基本参数
 args = DottableDict()
@@ -43,15 +44,7 @@ args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao-SFT'
 
 
 # ========================加载数据集========================
-tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
-
-dataset = SFTDataset(
-    filenames=FILE_NAMES,
-    tokenizer=tokenizer,
-    dataset_dir=DATASET_SRC_DIR,
-    save_dir=DATASET_SAVE_DIR
-)
-
+dataset = SFTDataset(datadir=glob(DATASET_SAVE_DIR + '/*.pkl'))
 train_dataloader = DataLoader(
     dataset=dataset,
     batch_size=args.batch_size,
