@@ -7,10 +7,11 @@ from bert4torch.models import build_transformer_model
 from bert4torch.snippets import copytree
 
 config_path = '../config'
-# model_path = '../ckpt/MiniLLM-L12_H1024_A8-NoWudao/108000/model.pt'
-# model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao/final/model.pt'
-model_path = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca/final/model.pt'
-save_dir = os.path.dirname(model_path) + '_transformers'
+model_path = 'your absolute path to the model checkpoint include model.pt'
+save_dir = '../output_transformer'
+
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir, exist_ok=True)
 
 model = build_transformer_model(config_path=config_path, checkpoint_path=None, add_trainer=True)
 model.load_weights(model_path, mapping=lambda x: x.replace('module.', ''))
