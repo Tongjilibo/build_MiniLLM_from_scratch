@@ -13,7 +13,7 @@ args.max_length = 128
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_1_1B_config.json')
-args.model_path = '/share/home/zyx/Code/build_MiniLLM_from_scratch/ckpt_0319/iniLLM-L12_H1024_A8-NoWudao/final_3.5336/model.pt'
+args.model_path = '../ckpt/MiniLLM-0.2B-NoWudao/final/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)

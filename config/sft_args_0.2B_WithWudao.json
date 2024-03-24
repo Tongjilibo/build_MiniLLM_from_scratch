@@ -1,0 +1,14 @@
+{
+    "lr": 2e-5,
+    "batch_size": 8,
+    "grad_accumulation_steps": 1,
+    "pad_token_id": 0,
+    "max_length": 1024,
+    "epochs": 1,
+    "weight_decay": 0.1,
+    "interval": 2000,
+    "torch_dtype": null,
+    "data_path": "../data/*.bin",
+    "config_path": "../config/bert4torch_config_0.2B.json",
+    "save_dir": "../ckpt/MiniLLM-0.2B-WithWudao"
+}

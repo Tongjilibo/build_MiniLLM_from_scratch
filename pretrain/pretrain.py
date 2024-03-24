@@ -17,35 +17,20 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModelDDP
-from bert4torch.snippets import DottableDict, log_info, get_weight_decay_optim_groups
+from bert4torch.snippets import JsonConfig, log_info, get_weight_decay_optim_groups
 from bert4torch.callbacks import Checkpoint, Logger, Tensorboard
 from bert4torch.optimizers import get_linear_schedule_with_warmup
 from glob import glob
 
-args = DottableDict()
-args.include_wudao_corpus = False
+
+# 训练使用到的参数
+args = JsonConfig('../config/training_args_0.2B_WithWudao.json')
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
-args.lr = 3e-4  # 不含悟道的使用的是3e-4, 含悟道的使用的1.5e-4
-args.batch_size = 16
-args.grad_accumulation_steps = 1
-args.pad_token_id = 0
-args.max_length = 896
-args.epochs = 1
-args.weight_decay = 0.1
-args.interval = 2000
-args.torch_dtype = None  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
-args.data_path = '../data/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/'  # 你需要将对应的配置文件放到这个目录下，比如，如果你要训练0.2B 模型，则要将其重命名为 bert4torch_config.json 后放到这里
 args.resume_path = None
-
-if args.include_wudao_corpus:
-    args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao'
-    args.filenames = [i for i in glob(args.data_path, recursive=True)]
-else:
-    args.save_dir = '../ckpt_0319/iniLLM-L12_H1024_A8-NoWudao'
-
-    args.filenames = [i for i in glob(args.data_path, recursive=True) if 'wudaocorpus' not in i]
+args.filenames = [i for i in glob(args.data_path, recursive=True)]
+if not args.include_wudao_corpus:
+    args.filenames = [i for i in args.filenames if 'wudaocorpus' not in i]
 
 
 class MyDataset(Dataset):

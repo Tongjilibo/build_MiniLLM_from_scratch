@@ -1,0 +1,15 @@
+{
+    "include_wudao_corpus": true,
+    "lr": 1.5e-4,
+    "batch_size": 16,
+    "grad_accumulation_steps": 1,
+    "pad_token_id": 0,
+    "max_length": 896,
+    "epochs": 1,
+    "weight_decay": 0.1,
+    "interval": 2000,
+    "torch_dtype": null,
+    "data_path": "../data/*.bin",
+    "config_path": "../config/bert4torch_config_1.1B.json",
+    "save_dir": "../ckpt/MiniLLM-1.1B-WithWudao"
+}

@@ -1,87 +1,93 @@
 #! -*- coding: utf-8 -*-
 """
-指令微调
+========指令微调========
 单机多卡训练
 torchrun --standalone --nproc_per_node=4 sft.py
 多机多卡训练
 NCCL_DEBUG=INFO TORCH_NCCL_BLOCKING_WAIT=1 NCCL_IB_DISABLE=1 NCCL_SOCKET_IFNAME=你的网卡类型  torchrun --nnodes=你的主机数量 --node_rank=编号 --master_addr=你的master节点IP --master_port=12346 --nproc_per_node=8 sft.py
 
 注意事项：
-1. max_length, 需要对应修改data_process中的MAX_LENGTH
-2. data_process下有个MAX_SAMPLES参数, 可设置比如1000先在小数据集上验证跑通
+1. data_process下有个MAX_SAMPLES参数, 可设置比如1000先在小数据集上验证跑通
+2. 目前支持数据加载方式：
+    1）一次性加载所有数据，适合数据集不大的情况
+    2）每次从训练datasets随机挑选一个dataset进行训练，训练完成后再重新选择一个dataset，适合数据集较大时候
+       优点是节省内存空间，缺点是仅在该dataset内部shuffle，loss曲线可能会抖动
 """
 import torch.nn as nn
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from data_process import SFTDataset, collate_train_fn
+from data_process import SFTDataset, collate_train_fn, DATASET_SAVE_DIR, get_samples_count
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModelDDP
-from bert4torch.snippets import DottableDict, get_weight_decay_optim_groups
-from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard
+from bert4torch.snippets import DottableDict, get_weight_decay_optim_groups, log_info
+from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Callback
 from bert4torch.optimizers import get_linear_schedule_with_warmup
 import os
 import inspect
-from transformers import AutoTokenizer
+from glob import glob
+from collections import deque
+import random
+
 
 # 基本参数
 args = DottableDict()
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
+args.one_dataset_every_time = False
 args.lr = 2e-5
 args.batch_size = 8
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
-args.max_length = 896
 args.epochs = 5
 args.weight_decay = 0.1
 args.interval = 2000
 args.torch_dtype = None  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/'
-args.model_path = '/share/home/zyx/Code/build_MiniLLM_from_scratch/ckpt_0319/iniLLM-L12_H1024_A8-NoWudao/final_3.5336/model.pt'
-args.save_dir = '../ckpt_0320/MiniLLM-L12_H1024_A8-NoWudao-SFT'
-args.dataset_path = '/share/home/zyx/Dataset/sft_dataset/'
+args.config_path = '../config/bert4torch_config_0.2B.json'
+args.model_path = '../ckpt/MiniLLM-0.2B-WithWudao/final/model.pt'
+args.save_dir = '../ckpt/MiniLLM-0.2B-WithWudao-SFT'
+filenames = glob(DATASET_SAVE_DIR + '/*.jsonl')
+random.shuffle(filenames)
+args.filenames = deque(filenames)
+
 
 # ========================加载数据集========================
-# 这可能需要很久，因为数据集很大，按照实际情况按需使用，比如只使用alpaca-zh
-filenames = [
-    'alpaca-zh/alpaca_gpt4_data_zh.json',
-    'BelleGroup/Belle_open_source_0.5M.json',
-    'BelleGroup/Belle_open_source_1M.json',
-    'BelleGroup/school_math_0.25M.json',
-    'deepctrl-sft-data/sft_data_zh.jsonl',
-    'moss-002-sft-data/zh_helpfulness.json',
-    'moss-002-sft-data/zh_honesty.json',
-    'moss-003-sft-data/moss-003-sft-no-tools.jsonl',
-    'CodeChat/continue_zh.jsonl',
-    'CodeChat/continue_zh_2.jsonl',
-    'ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
-    'ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
-    'ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
-    'ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
-    'ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
-    'firefly-train-1.1M/firefly-train-1.1M.jsonl'
-]
+def get_trainloader(args):
+    if not args.one_dataset_every_time:
+        # 一次吃进去所有训练数据集，对内存要求较高
+        dataset = SFTDataset(datadir=filenames)
+        train_dataloader = DataLoader(
+            dataset=dataset,
+            batch_size=args.batch_size,
+            pin_memory=False,
+            drop_last=False,
+            shuffle=False,
+            num_workers=0 if os.name == 'nt' else 2,
+            sampler=DistributedSampler(dataset) if args.ddp_config is not None else None,
+            collate_fn=collate_train_fn
+        )
+    else:
+        # 一次使用一个数据文件
+        if len(args.filenames) == 0:
+            args.filenames = deque(filenames)
+            # log_info('all datasets consumed, start a new epoch')
 
-tokenizer = AutoTokenizer.from_pretrained(args.config_path, trust_remote_code=True)
+        filename = args.filenames.popleft()
+        dataset = SFTDataset([filename], verbose=0)
+        train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
+                                    drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,
+                                    sampler=DistributedSampler(dataset) if args.ddp_config is not None else None,
+                                    collate_fn=collate_train_fn)
+    return train_dataloader
+train_dataloader = get_trainloader(args)
 
-dataset = SFTDataset(
-    filenames=filenames,
-    tokenizer=tokenizer,
-    dataset_dir=args.dataset_path,
-    save_dir=args.dataset_save_path
-)
-
-train_dataloader = DataLoader(
-    dataset=dataset,
-    batch_size=args.batch_size,
-    pin_memory=False,
-    drop_last=False,
-    shuffle=False,
-    num_workers=0 if os.name == 'nt' else 2,
-    sampler=DistributedSampler(dataset) if args.ddp_config is not None else None,
-    collate_fn=collate_train_fn
-)
+if args.one_dataset_every_time:
+    sample_count = get_samples_count(filenames)
+    total_steps = sample_count * args.epochs // (args.batch_size * args.grad_accumulation_steps)
+    if args.ddp_config is not None:
+        total_steps = total_steps // args.ddp_config.world_size
+else:
+    total_steps = len(train_dataloader) * args.epochs // args.grad_accumulation_steps
 
 
 # ========================加载预训练模型========================
@@ -134,7 +140,6 @@ optimizer = optim.AdamW(
     **extra_args
 )
 
-total_steps = len(train_dataloader) * args.epochs // args.grad_accumulation_steps
 scheduler = get_linear_schedule_with_warmup(optimizer, min(5000, int(0.1 * total_steps)), total_steps)
 model.compile(
     loss=CrossEntropyLoss(ignore_index=args.pad_token_id),
@@ -145,6 +150,12 @@ model.compile(
     mixed_precision=True if args.torch_dtype is None else False
 )
 
+class GenTrainLoader(Callback):
+    """当前dataloader消耗完，自动用下一个文件生成dataloder
+    """
+    def on_dataloader_end(self, logs=None):
+        model.train_dataloader = get_trainloader(args)
+
 
 if __name__ == '__main__':
     logger = Logger(args.save_dir + '/log_sft.log')
@@ -153,7 +164,7 @@ if __name__ == '__main__':
         epoch_or_step='step',
         min_max='min',
         verbose=0,
-        nterval=args.interval,
+        interval=args.interval,
         save_dir=args.save_dir + '/{step}_{loss:.4f}',
         max_save_count=5,
         save_on_train_end=True
@@ -168,5 +179,10 @@ if __name__ == '__main__':
     callbacks = [checkpoint, logger, ts_board]
     if args.ddp_config is not None:
         model.disable_run_callbacks(callbacks)
-
-    model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=callbacks)
+    if args.one_dataset_every_time:
+        callbacks = [GenTrainLoader()] + callbacks
+    
+    model.fit(train_dataloader, 
+              steps_per_epoch=None if not args.one_dataset_every_time else total_steps // args.epochs, 
+              epochs=args.epochs, 
+              callbacks=callbacks)
