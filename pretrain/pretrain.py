@@ -24,7 +24,7 @@ from glob import glob
 
 
 # 训练使用到的参数
-args = JsonConfig('../config/training_args_0.2B_WithWudao.json')
+args = JsonConfig('../config/MiniLLM-0.2B-WithWudao/pretrain_args.json')
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.resume_path = None
