@@ -25,7 +25,7 @@ from glob import glob
 args = DottableDict()
 args.include_wudao_corpus = False
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
-args.lr = 1.5e-4  # 不含悟道的使用的是3e-4, 含悟道的使用的1.5e-4
+args.lr = 3e-4  # 不含悟道的使用的是3e-4, 含悟道的使用的1.5e-4
 args.batch_size = 16
 args.grad_accumulation_steps = 1
 args.pad_token_id = 0
@@ -36,11 +36,11 @@ args.interval = 2000
 args.torch_dtype = None  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
 args.data_path = '../data/*.bin'
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/bert4torch_1_1B_config.json'
+args.config_path = '../config/'  # 你需要将对应的配置文件放到这个目录下，比如，如果你要训练0.2B 模型，则要将其重命名为 bert4torch_config.json 后放到这里
 args.resume_path = None
 
 if args.include_wudao_corpus:
-    args.save_dir = '../ckpt_0319/iniLLM-L12_H1024_A8-NoWudao'
+    args.save_dir = '../ckpt/MiniLLM-L12_H1024_A8-WithWudao'
     args.filenames = [i for i in glob(args.data_path, recursive=True)]
 else:
     args.save_dir = '../ckpt_0319/iniLLM-L12_H1024_A8-NoWudao'
@@ -67,6 +67,7 @@ class MyDataset(Dataset):
 
     def __len__(self):
         return self.smp_size
+
     def __getitem__(self, index: int):
         fi, i = self.index_map[index]
         sample = self.data[fi][i]

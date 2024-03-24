@@ -27,7 +27,7 @@ pip install bert4torch==0.4.9.post2  # 若找不到则指定　-i https://pypi.o
 ```shell
 # 为防止terminal关闭，可以使用nohup, tmux, screen方式来启动
 # eg. nohup torchrun --standalone --nproc_per_node=4 pretrain.py --name baby > nohup.log&
-
+# config/bert4torch_config.py: 配置文件默认为0.2B模型训练文件，如果你希望更换为1B，你需要自行将config文件中的`bert4torch_config_1.json`的内容黏贴到`bert4torch_config.json`
 # 预训练
 cd pretrain
 torchrun --standalone --nproc_per_node=4 pretrain.py  # 部分反映ddp训到一般会崩，需设置`export NCCL_IB_DISABLE=1`
@@ -50,6 +50,7 @@ python convert.py
 ```
 
 ## 3. 更新历史
+- **20240324**: 更新 0.2B 和 1B 模型配置文件，修复了转换文件地址的bug。
 - **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-L12_H1024_A8-NoWudao`和`MiniLLM-MiniLLM-L12_H1024_A8-WithWudao`; SFT模型`MiniLLM-L12_H1024_A8-WithWudao-SFT_Alpaca`
 
 ## 4. 预训练
