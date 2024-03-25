@@ -23,7 +23,7 @@ from bert4torch.optimizers import get_linear_schedule_with_warmup
 from glob import glob
 
 
-# 训练使用到的参数
+# 训练使用到的参数，可加载不同的文件
 args = JsonConfig('../config/MiniLLM-0.2B-WithWudao/pretrain_args.json')
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'

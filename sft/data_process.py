@@ -193,7 +193,10 @@ def process_deepctrl(filename, tokenizer):
     def process_one(line):
         if not line:
             return None, None
-        per = json.loads(line)
+        try:
+            per = json.loads(line)
+        except:
+            return None, None
 
         input_ids, labels = [], []
         for human, robot in per['history']:

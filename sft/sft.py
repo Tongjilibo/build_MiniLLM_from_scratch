@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 from data_process import SFTDataset, collate_train_fn, DATASET_SAVE_DIR, get_samples_count
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModelDDP
-from bert4torch.snippets import DottableDict, get_weight_decay_optim_groups, log_info
+from bert4torch.snippets import JsonConfig, get_weight_decay_optim_groups, log_info
 from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Callback
 from bert4torch.optimizers import get_linear_schedule_with_warmup
 import os
@@ -30,22 +30,10 @@ from collections import deque
 import random
 
 
-# 基本参数
-args = DottableDict()
+# 训练使用到的参数，可加载不同的文件
+args = JsonConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.json')
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
-args.one_dataset_every_time = False
-args.lr = 2e-5
-args.batch_size = 8
-args.grad_accumulation_steps = 1
-args.pad_token_id = 0
-args.epochs = 5
-args.weight_decay = 0.1
-args.interval = 2000
-args.torch_dtype = None  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/bert4torch_config.json'
-args.model_path = '../ckpt/MiniLLM-0.2B-WithWudao/final/model.pt'
-args.save_dir = '../ckpt/MiniLLM-0.2B-WithWudao-SFT'
 filenames = glob(DATASET_SAVE_DIR + '/*.jsonl')
 random.shuffle(filenames)
 args.filenames = deque(filenames)

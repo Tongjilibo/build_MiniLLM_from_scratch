@@ -1,14 +1,15 @@
 {
+    "one_dataset_every_time": false,
     "lr": 2e-5,
     "batch_size": 8,
     "grad_accumulation_steps": 1,
     "pad_token_id": 0,
     "max_length": 1024,
-    "epochs": 1,
+    "epochs": 5,
     "weight_decay": 0.1,
     "interval": 2000,
     "torch_dtype": null,
-    "data_path": "../data/*.bin",
-    "config_path": "../config/MiniLLM-0.2B-WithWudao-SFT/bert4torch_config.json",
-    "save_dir": "../ckpt/MiniLLM-0.2B-WithWudao-SFT"
+    "model_path": "../ckpt/MiniLLM-0.2B-WithWudao/final/model.pt",
+    "config_path": "../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/bert4torch_config.json",
+    "save_dir": "../ckpt/MiniLLM-0.2B-WithWudao-SFT_Alpaca"
 }
