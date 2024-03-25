@@ -26,7 +26,7 @@ HUMAN = '<human>'
 ROBOT = '<robot>'
 PAD_TOKEN_ID = 0
 EOS_TOKEN_ID = 2
-MAX_SAMPLES = 10000  # None表示不限制，不为None用于测试小样本快速验证
+MAX_SAMPLES = None  # None表示不限制，不为None用于测试小样本快速验证
 MAX_SAMPLES_PER_FILE = 100000  # 每个文件最多能容纳的样本量
 DEBUG = False
 

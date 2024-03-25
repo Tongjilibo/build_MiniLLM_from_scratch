@@ -10,6 +10,6 @@
     "interval": 2000,
     "torch_dtype": null,
     "data_path": "../data/*.bin",
-    "config_path": "../config/bert4torch_config.json",
+    "config_path": "../config/MiniLLM-1.1B-WithWudao/bert4torch_config.json",
     "save_dir": "../ckpt/MiniLLM-1.1B-WithWudao"
 }

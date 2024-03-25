@@ -9,7 +9,7 @@
     "weight_decay": 0.1,
     "interval": 2000,
     "torch_dtype": null,
-    "data_path": "../data/*.bin",
-    "config_path": "../config/bert4torch_config_0.2B.json",
+    "data_path": "/data/corpus/pretrain_data_bin/**/*.bin",
+    "config_path": "../config/MiniLLM-0.2B-WithWudao/bert4torch_config.json",
     "save_dir": "../ckpt/MiniLLM-0.2B-WithWudao"
 }
