@@ -50,11 +50,11 @@ python convert.py
 ```
 
 ## 3. 更新历史
-- **20240324**: 更新 0.2B 和 1B 模型配置文件，修复了转换文件地址的bug。
+- **20240325**: 增加1.1B模型（源于[zRzRzRzRzRzRzR](https://github.com/zRzRzRzRzRzRzR)）
 - **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-0.2B-NoWudao`和`MiniLLM-MiniLLM-0.2B-WithWudao`; SFT模型`MiniLLM-0.2B-WithWudao-SFT_Alpaca`
 
 ## 4. 预训练
-### 4.1 预训练语料（源于[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)）
+### 4.1 预训练语料
 | 中文预训练语料               | 描述                                      |
 |-------------------------|----------------------------------------|
 | [Wiki中文百科](https://huggingface.co/datasets/pleisto/wikipedia-cn-20230720-filtered)| 中文Wikipedia的数据 |
@@ -70,6 +70,7 @@ python convert.py
 |----------------------------|--------------------------|---------------------|
 | MiniLLM-0.2B-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-NoWudao)|
 | MiniLLM-0.2B-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao)|
+| MiniLLM-1.1B-WithWudao| （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-WithWudao)|
 
 ### 4.3 预训练过程
 - 训练参数配置和训练时长
@@ -78,6 +79,7 @@ python convert.py
 |-------------------------------|--------------------------|---------------------|
 | MiniLLM-0.2B-NoWudao  |140亿 Tokens; btz=32*4gpu; lr=3e-4; warmup_steps=5000 |  4×A800(80G), 单卡占用约60G，耗时20h|
 | MiniLLM-0.2B-WithWudao|640亿 Tokens; btz=32*4gpu; lr=1.5e-4; warmup_steps=5000 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用）|
+| MiniLLM-1.1B-WithWudao|640亿 Tokens; lr=1.5e-4; warmup_steps=5000 ||
 
 
 - loss记录
@@ -153,13 +155,15 @@ print(response)
 |指令微调权重 | 语料            | 下载地址                       |
 |----------------------------|-------------------------|--------------------------|
 | MiniLLM-0.2B-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca)|
+| MiniLLM-1.1B-WithWudao-SFT|全部语料| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-WithWudao-SFT)|
 
 ### 5.3 指令微调训练过程
 - 训练参数配置和训练时长
 
 |         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
 |-------------------------------|--------------------------|---------------------|
-| MiniLLM-0.2B-NoWudao  |[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)数据集; btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min|
+| MiniLLM-0.2B-WithWudao-SFT_Alpaca  |[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)数据集; btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min|
+| MiniLLM-1.1B-WithWudao-SFT  | |  |
 
 - loss
 

@@ -12,7 +12,7 @@ from threading import Thread
 from data_process import HUMAN, ROBOT
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-dir_path = '/home/lb/projects/build_miniLLM_from_scratch/ckpt/MiniLLM-1.1B-WithWudao-SFT/final_transformers'
+dir_path = '../ckpt/MiniLLM-1.1B-WithWudao-SFT/final_transformers'
 
 tokenizer = AutoTokenizer.from_pretrained(dir_path, trust_remote_code=True)
 model = LlamaForCausalLM.from_pretrained(dir_path).to(device)
