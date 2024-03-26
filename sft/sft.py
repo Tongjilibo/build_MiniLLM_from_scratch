@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from data_process import SFTDataset, collate_train_fn, DATASET_SAVE_DIR, get_samples_count
+from data_process import SFTDataset, collate_train_fn, get_samples_count
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModelDDP
 from bert4torch.snippets import JsonConfig, get_weight_decay_optim_groups, log_info
@@ -34,7 +34,7 @@ import random
 args = JsonConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.json')
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-filenames = glob(DATASET_SAVE_DIR + '/*.jsonl')
+filenames = glob(args.dataset_save_dir + '/*.jsonl')
 random.shuffle(filenames)
 args.filenames = deque(filenames)
 

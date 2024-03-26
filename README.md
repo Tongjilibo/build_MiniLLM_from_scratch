@@ -65,28 +65,20 @@ python convert.py
 
 项目开源了经过ChatGLM2-6B的分词器处理后的预训练语料，共计**634亿Tokens**的数据量，链接如下：[Corpus](https://pan.baidu.com/s/18o4gF-G68qfgOGWQXgAg3g) 提取码：6unr。
 
-### 4.2 预训练权重
-|预训练权重 | 预训练语料                    | 下载地址                       |
-|----------------------------|--------------------------|---------------------|
-| MiniLLM-0.2B-NoWudao       | （140亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-NoWudao)|
-| MiniLLM-0.2B-WithWudao       | （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao)|
-| MiniLLM-1.1B-WithWudao| （640亿 Tokens）<br/>Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora  | [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-WithWudao)|
+### 4.2 预训练权重和过程
+- 预训练细节
 
-### 4.3 预训练过程
-- 训练参数配置和训练时长
-
-|         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
-|-------------------------------|--------------------------|---------------------|
-| MiniLLM-0.2B-NoWudao  |140亿 Tokens; btz=32*4gpu; lr=3e-4; warmup_steps=5000 |  4×A800(80G), 单卡占用约60G，耗时20h|
-| MiniLLM-0.2B-WithWudao|640亿 Tokens; btz=32*4gpu; lr=1.5e-4; warmup_steps=5000 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用）|
-| MiniLLM-1.1B-WithWudao|640亿 Tokens; lr=1.5e-4; warmup_steps=5000 ||
-
+|预训练权重 | 模型设置                    | 硬件占用和训练时长                       | 下载地址                       |
+|----------------------------|--------------------------|---------------------|---------------------|
+| MiniLLM-0.2B-NoWudao       | ✅140亿 Tokens: Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh<br/>✅btz=32*4gpu; lr=3e-4; warmup_steps=5000; maxlen=1024 | 4×A800(80G), 单卡占用约60G，耗时20h|[百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-NoWudao)|
+| MiniLLM-0.2B-WithWudao       | ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*4gpu; lr=1.5e-4; warmup_steps=5000; maxlen=1024 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用） | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao)|
+| MiniLLM-1.1B-WithWudao| ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*8gpu; lr=1.5e-4; warmup_steps=5000; maxlen=896 |4×A800(80G), 耗时1天| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-WithWudao)|
 
 - loss记录
 
 ![tensorboard](./docs/pics/tensorboard.png)
 
-### 4.4 预训练模型调用
+### 4.3 预训练模型调用
 ```python
 # 以下两句视网络情况添加
 import os
@@ -108,7 +100,7 @@ response = tokenizer.decode(output_ids[0].cpu(), skip_special_tokens=True)
 print(response)
 ```
 
-### 4.5 预训练续写效果
+### 4.4 预训练续写效果
 - MiniLLM-0.2B-NoWudao
 ```shell
 用户：小明学习优异、身体健康、是一名
@@ -151,25 +143,19 @@ print(response)
 |[shareAI/ShareGPT-Chinese-English-90k](https://huggingface.co/datasets/shareAI/ShareGPT-Chinese-English-90k)     | 中英文平行双语优质人机问答数据集，覆盖真实复杂场景下的用户提问。|
 |[deepctrl/deepctrl-sft-data](https://www.modelscope.cn/datasets/deepctrl/deepctrl-sft-data/summary)|匠数大模型SFT数据集是一个由匠数科技精心搜集整理的高质量数据集,包含10M条数据的中文数据集和包含2M条数据的英文数据集|
 
-### 5.2 指令微调权重
-|指令微调权重 | 语料            | 下载地址                       |
-|----------------------------|-------------------------|--------------------------|
-| MiniLLM-0.2B-WithWudao-SFT_Alpaca| [shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca)|
-| MiniLLM-1.1B-WithWudao-SFT|全部语料| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-WithWudao-SFT)|
+### 5.2 指令微调权重和过程
+- 指令微调细节
 
-### 5.3 指令微调训练过程
-- 训练参数配置和训练时长
-
-|         权重                  |   预训练设置                    | 硬件占用和训练时长                       |
-|-------------------------------|--------------------------|---------------------|
-| MiniLLM-0.2B-WithWudao-SFT_Alpaca  |[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)数据集; btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min|
-| MiniLLM-1.1B-WithWudao-SFT  | |  |
+|         权重                  |   模型设置                    | 硬件占用和训练时长                       | 下载地址 |
+|-------------------------------|--------------------------|---------------------|---------------------|
+| MiniLLM-0.2B-WithWudao-SFT_Alpaca  |✅[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)<br/>✅btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca) |
+| zR-Llama-1b-ChatGLM2-6b-tokenizer  |✅全部语料<br/>✅btz=8; lr=2e-5; 5epoch|单卡A800, 耗时 3d 12h|[HuggingFace](https://huggingface.co/zRzRzRzRzRzRzR/zR-Llama-1b-ChatGLM2-6b-tokenizer)
 
 - loss
 
 ![tensorboard](./docs/pics/tensorboard_sft.png)
 
-### 5.4 指令微调模型调用
+### 5.3 指令微调模型调用
 ```python
 # 以下两句视网络情况添加
 import os
@@ -192,7 +178,7 @@ response = tokenizer.decode(output_ids[0].cpu(), skip_special_tokens=True)[len(q
 print(response)
 ```
 
-### 5.5 指令微调Chat效果
+### 5.4 指令微调Chat效果
 - MiniLLM-0.2B-WithWudao-SFT_Alpaca
 ```shell
 User：你好

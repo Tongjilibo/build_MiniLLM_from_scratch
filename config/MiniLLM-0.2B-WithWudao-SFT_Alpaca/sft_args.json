@@ -11,5 +11,6 @@
     "torch_dtype": null,
     "model_path": "../ckpt/MiniLLM-0.2B-WithWudao/final/model.pt",
     "config_path": "../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/bert4torch_config.json",
-    "save_dir": "../ckpt/MiniLLM-0.2B-WithWudao-SFT_Alpaca"
+    "save_dir": "../ckpt/MiniLLM-0.2B-WithWudao-SFT_Alpaca",
+    "dataset_save_dir": "../sft_data"
 }

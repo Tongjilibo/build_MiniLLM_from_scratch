@@ -1,6 +1,6 @@
 #! -*- coding: utf-8 -*-
 """
-sft-推理：transformerstransformers格式
+sft-推理：transformers格式
 - 使用的是docs/convert.py对pt文件转换后的pytorch_model.bin文件
 - 也可参考readme直接从huggingface下载并运行
 """
@@ -12,10 +12,13 @@ from threading import Thread
 from data_process import HUMAN, ROBOT
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-dir_path = '../ckpt/MiniLLM-1.1B-WithWudao-SFT/final_transformers'
+pretrained_model_name_or_path = '../ckpt/MiniLLM-1.1B-WithWudao-SFT/final_transformers'
 
-tokenizer = AutoTokenizer.from_pretrained(dir_path, trust_remote_code=True)
-model = LlamaForCausalLM.from_pretrained(dir_path).to(device)
+# pretrained_model_name_or_path：预训练模型的本地路径或model_name(连接huggingface下载)
+# Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca
+# zRzRzRzRzRzRzR/zR-Llama-1b-ChatGLM2-6b-tokenizer
+tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path, trust_remote_code=True)
+model = LlamaForCausalLM.from_pretrained(pretrained_model_name_or_path).to(device)
 
 
 def build_cli_history(history):

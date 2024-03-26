@@ -10,7 +10,8 @@
 import json
 from torch.utils.data import Dataset
 import torch
-from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn, parallel_apply, log_info_once
+from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn
+from bert4torch.snippets import parallel_apply, log_info_once, JsonConfig
 from typing import Literal
 import re
 from tqdm import tqdm
@@ -21,41 +22,37 @@ import numpy as np
 
 
 # ================================数据处理的参数================================
-MAX_LENGTH = 1024
+args = JsonConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_dataprocess_args.json')
+# args.dataset_src_dir  # 源数据路径
+# args.dataset_save_dir  # 处理完的数据保存路径
+# args.file_names  # 待处理的数据集，因为数据集很大，按照实际情况按需使用，比如只使用alpaca-zh
+    # "alpaca-zh/alpaca_gpt4_data_zh.json",
+    # "BelleGroup/Belle_open_source_0.5M.json",
+    # "BelleGroup/Belle_open_source_1M.json",
+    # "BelleGroup/school_math_0.25M.json",
+    # "deepctrl-sft-data/sft_data_zh.jsonl",
+    # "moss-002-sft-data/zh_helpfulness.json",
+    # "moss-002-sft-data/zh_honesty.json",
+    # "moss-003-sft-data/moss-003-sft-no-tools.jsonl",
+    # "CodeChat/continue_zh.jsonl",
+    # "CodeChat/continue_zh_2.jsonl",
+    # "ShareGPT-Chinese-English-90k/common_zh_70k.jsonl",
+    # "ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl",
+    # "ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl",
+    # "ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl",
+    # "ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl",
+    # "firefly-train-1.1M/firefly-train-1.1M.jsonl"
+# args.max_samples # None表示不限制，不为None用于测试小样本快速验证
+# args.args.max_samples_per_file  # 每个文件最多能容纳的样本量
+
 HUMAN = '<human>'
 ROBOT = '<robot>'
-PAD_TOKEN_ID = 0
-EOS_TOKEN_ID = 2
-MAX_SAMPLES = None  # None表示不限制，不为None用于测试小样本快速验证
-MAX_SAMPLES_PER_FILE = 100000  # 每个文件最多能容纳的样本量
 DEBUG = False
 
 # 多进程参数, linux下可用
 USE_PARALLEL = False if os.name == 'nt' else True
 WORKERS = 8 # os.cpu_count()
 MAX_QUEUE_SIZE = 2000
-
-DATASET_SRC_DIR = '/data/corpus/sft/common/'  # 源数据路径
-DATASET_SAVE_DIR = '../sft_data'  # 处理完的数据保存路径
-# 待处理的数据集，因为数据集很大，按照实际情况按需使用，比如只使用alpaca-zh
-FILE_NAMES = [
-    'alpaca-zh/alpaca_gpt4_data_zh.json',
-    'BelleGroup/Belle_open_source_0.5M.json',
-    'BelleGroup/Belle_open_source_1M.json',
-    'BelleGroup/school_math_0.25M.json',
-    'deepctrl-sft-data/sft_data_zh.jsonl',
-    'moss-002-sft-data/zh_helpfulness.json',
-    'moss-002-sft-data/zh_honesty.json',
-    'moss-003-sft-data/moss-003-sft-no-tools.jsonl',
-    'CodeChat/continue_zh.jsonl',
-    'CodeChat/continue_zh_2.jsonl',
-    'ShareGPT-Chinese-English-90k/common_zh_70k.jsonl',
-    'ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl',
-    'ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl',
-    'ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl',
-    'ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl',
-    'firefly-train-1.1M/firefly-train-1.1M.jsonl'
-]
 tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
 
 
@@ -92,7 +89,7 @@ def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='
                                         dummy=False, callback=None, unordered=False)
         train_samples = [{'input_ids':i[0], 'labels':i[1]} for i in train_samples if i[0] is not None and len(i[0])>1]
 
-        save_path = os.path.join(DATASET_SAVE_DIR, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + f'_{fi}.jsonl')
+        save_path = os.path.join(args.dataset_save_dir, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + f'_{fi}.jsonl')
         with open(save_path, 'w') as f:
             for item in train_samples:
                 json.dump(item, f)  # 使用json.dump直接将字典转换为JSON格式写入文件
@@ -101,20 +98,20 @@ def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='
 
 
     # 读入数据，分json和jsonl两种格式
-    data_path = os.path.join(DATASET_SRC_DIR, filename)
-    os.makedirs(DATASET_SAVE_DIR, exist_ok=True)
+    data_path = os.path.join(args.dataset_src_dir, filename)
+    os.makedirs(args.dataset_save_dir, exist_ok=True)
 
     all_count = 0  # 总的样本量
     if data_format == 'json':
         with open(data_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        if MAX_SAMPLES is not None:
-            data = data[:MAX_SAMPLES]
+        if args.max_samples is not None:
+            data = data[:args.max_samples]
 
         # 按照每个文件的最大样本数量来保存
-        total_steps = int(np.ceil(len(data) / MAX_SAMPLES_PER_FILE) * MAX_SAMPLES_PER_FILE)
-        for fi, start in enumerate(range(0, total_steps, MAX_SAMPLES_PER_FILE), start=1):
-            data_slice = data[start: start+MAX_SAMPLES_PER_FILE]
+        total_steps = int(np.ceil(len(data) / args.max_samples_per_file) * args.max_samples_per_file)
+        for fi, start in enumerate(range(0, total_steps, args.max_samples_per_file), start=1):
+            data_slice = data[start: start+args.max_samples_per_file]
             if len(data_slice) == 0:
                 continue
             all_count += process_data_slice(data_slice, fi)
@@ -129,12 +126,12 @@ def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='
             data.append(line)
             data_len = len(data)
 
-            if data_len >= MAX_SAMPLES_PER_FILE:
+            if data_len >= args.max_samples_per_file:
                 all_count += process_data_slice(data, fi)
                 data = []
                 fi += 1
 
-            if (MAX_SAMPLES is not None) and (data_len >= MAX_SAMPLES):
+            if (args.max_samples is not None) and (data_len >= args.max_samples):
                 break
         
         if len(data) > 0:
@@ -156,10 +153,10 @@ def process_alpaca(filename, tokenizer):
     def process_one(per):
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['output'], add_special_tokens=False)
-        if len(q) + len(a) >= MAX_LENGTH:
+        if len(q) + len(a) >= args.MAX_LENGTH:
             return None, None
         input_ids = q + a
-        labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+        labels = [args.pad_token_id] * (len(q) - 1) + input_ids[len(q):] + [args.eos_token_id]
 
         assert len(input_ids) == len(labels)
         return input_ids, labels
@@ -176,10 +173,10 @@ def process_belle(filename, tokenizer):
         per = json.loads(line)
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['output'], add_special_tokens=False)
-        if len(q) + len(a) >= MAX_LENGTH:
+        if len(q) + len(a) >= args.MAX_LENGTH:
             return None, None
         input_ids = q + a
-        labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+        labels = [args.pad_token_id] * (len(q) - 1) + input_ids[len(q):] + [args.eos_token_id]
 
         assert len(input_ids) == len(labels)
         return input_ids, labels
@@ -203,17 +200,17 @@ def process_deepctrl(filename, tokenizer):
             q = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
             a = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(input_ids + q + a) >= MAX_LENGTH:
+            if len(input_ids + q + a) >= args.MAX_LENGTH:
                 return None, None
             input_ids.extend(q + a)
-            labels.extend([PAD_TOKEN_ID] * (len(q) - 1) + a + [EOS_TOKEN_ID])
+            labels.extend([args.pad_token_id] * (len(q) - 1) + a + [args.eos_token_id])
 
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['output'], add_special_tokens=False)
         input_ids.extend(q + a)
-        labels.extend([PAD_TOKEN_ID] * (len(q) - 1) + a + [EOS_TOKEN_ID])
+        labels.extend([args.pad_token_id] * (len(q) - 1) + a + [args.eos_token_id])
 
-        if len(input_ids) >= MAX_LENGTH:
+        if len(input_ids) >= args.MAX_LENGTH:
             return None, None
         assert len(input_ids) == len(labels)
         return input_ids, labels
@@ -232,12 +229,12 @@ def process_moss002(filename, tokenizer):
             human = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
             robot = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(input_ids + human + robot) >= MAX_LENGTH:
+            if len(input_ids + human + robot) >= args.MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
-            labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
+            labels.extend([args.pad_token_id] * (len(human) - 1) + robot + [args.eos_token_id])
 
-        if len(input_ids) >= MAX_LENGTH:
+        if len(input_ids) >= args.MAX_LENGTH:
             return None, None
         assert len(input_ids) == len(labels)
         return input_ids, labels
@@ -264,12 +261,12 @@ def process_moss003(filename, tokenizer):
             human = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
             robot = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(input_ids + human + robot) >= MAX_LENGTH:
+            if len(input_ids + human + robot) >= args.MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
-            labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
+            labels.extend([args.pad_token_id] * (len(human) - 1) + robot + [args.eos_token_id])
 
-        if len(input_ids) >= MAX_LENGTH:
+        if len(input_ids) >= args.MAX_LENGTH:
             return None, None
         assert len(input_ids) == len(labels)
         return input_ids, labels
@@ -292,12 +289,12 @@ def process_shareai(filename, tokenizer):
             human = tokenizer.encode(HUMAN + human + ROBOT, add_special_tokens=False)
             robot = tokenizer.encode(robot, add_special_tokens=False)
             # 轮次太多的话，则进行截断
-            if len(input_ids + human + robot) >= MAX_LENGTH:
+            if len(input_ids + human + robot) >= args.MAX_LENGTH:
                 break
             input_ids.extend(human + robot)
-            labels.extend([PAD_TOKEN_ID] * (len(human) - 1) + robot + [EOS_TOKEN_ID])
+            labels.extend([args.pad_token_id] * (len(human) - 1) + robot + [args.eos_token_id])
 
-        if len(input_ids) >= MAX_LENGTH:
+        if len(input_ids) >= args.MAX_LENGTH:
             return None, None
         assert len(input_ids) == len(labels)
         return input_ids, labels
@@ -314,10 +311,10 @@ def process_firefly(filename, tokenizer):
         per = json.loads(line)
         q = tokenizer.encode(HUMAN + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['target'], add_special_tokens=False)
-        if len(q) + len(a) >= MAX_LENGTH:
+        if len(q) + len(a) >= args.MAX_LENGTH:
             return None, None
         input_ids = q + a
-        labels = [PAD_TOKEN_ID] * (len(q) - 1) + input_ids[len(q):] + [EOS_TOKEN_ID]
+        labels = [args.pad_token_id] * (len(q) - 1) + input_ids[len(q):] + [args.eos_token_id]
         assert len(input_ids) == len(labels)
         return input_ids, labels
 
@@ -380,8 +377,8 @@ class SFTDataset(Dataset):
 def collate_train_fn(batch):
     batch_token_ids = [i['input_ids'] for i in batch]
     batch_labels = [i['labels'] for i in batch]
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=PAD_TOKEN_ID), dtype=torch.long)
-    batch_labels = torch.tensor(sequence_padding(batch_labels, value=PAD_TOKEN_ID), dtype=torch.long)
+    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, value=args.pad_token_id), dtype=torch.long)
+    batch_labels = torch.tensor(sequence_padding(batch_labels, value=args.pad_token_id), dtype=torch.long)
     return [batch_token_ids], batch_labels
 
 
@@ -392,13 +389,13 @@ def main():
     :param DATASET_SAVE_DIR: 数据保存的文件夹
     :param tokenizer: tokenizer
     '''
-    if MAX_SAMPLES is not None:
-        log_warn(f'Only use {MAX_SAMPLES} samples for each sft dataset.')
+    if args.max_samples is not None:
+        log_warn(f'Only use {args.max_samples} samples for each sft dataset.')
     else:
         log_warn(f'Use all samples for each sft dataset, may be slow.')
     
     with Timeit() as ti:
-        for filename in FILE_NAMES:
+        for filename in args.file_names:
             sample_count = MAPPING[filename](filename, tokenizer)
             ti.lap(name=f'{filename}: len={sample_count}'.ljust(70) + '-', reset=True)
 

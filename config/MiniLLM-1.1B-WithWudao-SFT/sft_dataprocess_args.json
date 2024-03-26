@@ -1,0 +1,27 @@
+{
+    "MAX_LENGTH": 896,
+    "pad_token_id": 0,
+    "eos_token_id": 2,
+    "dataset_src_dir": "/data/corpus/sft/common/",
+    "dataset_save_dir": "../sft_data",
+    "file_names":[
+        "alpaca-zh/alpaca_gpt4_data_zh.json",
+        "BelleGroup/Belle_open_source_0.5M.json",
+        "BelleGroup/Belle_open_source_1M.json",
+        "BelleGroup/school_math_0.25M.json",
+        "deepctrl-sft-data/sft_data_zh.jsonl",
+        "moss-002-sft-data/zh_helpfulness.json",
+        "moss-002-sft-data/zh_honesty.json",
+        "moss-003-sft-data/moss-003-sft-no-tools.jsonl",
+        "CodeChat/continue_zh.jsonl",
+        "CodeChat/continue_zh_2.jsonl",
+        "ShareGPT-Chinese-English-90k/common_zh_70k.jsonl",
+        "ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl",
+        "ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl",
+        "ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl",
+        "ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl",
+        "firefly-train-1.1M/firefly-train-1.1M.jsonl"
+    ],
+    "max_samples": null,
+    "max_samples_per_file": 100000
+}
