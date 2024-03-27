@@ -405,7 +405,9 @@ def main():
             ti.lap(name=f'{filename}: len={sample_count}'.ljust(70) + '-', reset=True)
 
 if __name__ == '__main__':
-    # main()
-    filename = 'Tongjilibo/self_cognition.json'
-    USE_PARALLEL = False
-    sample_count = MAPPING[filename](filename, tokenizer)
+    main()
+
+    # 测试使用
+    # filename = 'Tongjilibo/self_cognition.json'
+    # USE_PARALLEL = False
+    # sample_count = MAPPING[filename](filename, tokenizer)
