@@ -17,14 +17,14 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModelDDP
-from bert4torch.snippets import JsonConfig, log_info, get_weight_decay_optim_groups
+from bert4torch.snippets import YamlConfig, log_info, get_weight_decay_optim_groups
 from bert4torch.callbacks import Checkpoint, Logger, Tensorboard
 from bert4torch.optimizers import get_linear_schedule_with_warmup
 from glob import glob
 
 
 # 训练使用到的参数，可加载不同的文件
-args = JsonConfig('../config/MiniLLM-0.2B-WithWudao/pretrain_args.json')
+args = YamlConfig('../config/MiniLLM-0.2B-WithWudao/pretrain_args.yaml')
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.resume_path = None

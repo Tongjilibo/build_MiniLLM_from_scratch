@@ -11,7 +11,7 @@ import json
 from torch.utils.data import Dataset
 import torch
 from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn
-from bert4torch.snippets import parallel_apply, log_info_once, JsonConfig
+from bert4torch.snippets import parallel_apply, log_info_once, YamlConfig
 from typing import Literal
 import re
 from tqdm import tqdm
@@ -22,36 +22,13 @@ import numpy as np
 
 
 # ================================数据处理的参数================================
-args = JsonConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_dataprocess_args.json')
-# args.dataset_src_dir  # 源数据路径
-# args.dataset_save_dir  # 处理完的数据保存路径
-# args.file_names  # 待处理的数据集，因为数据集很大，按照实际情况按需使用，比如只使用alpaca-zh
-    # "alpaca-zh/alpaca_gpt4_data_zh.json",
-    # "BelleGroup/Belle_open_source_0.5M.json",
-    # "BelleGroup/Belle_open_source_1M.json",
-    # "BelleGroup/school_math_0.25M.json",
-    # "deepctrl-sft-data/sft_data_zh.jsonl",
-    # "moss-002-sft-data/zh_helpfulness.json",
-    # "moss-002-sft-data/zh_honesty.json",
-    # "moss-003-sft-data/moss-003-sft-no-tools.jsonl",
-    # "CodeChat/continue_zh.jsonl",
-    # "CodeChat/continue_zh_2.jsonl",
-    # "ShareGPT-Chinese-English-90k/common_zh_70k.jsonl",
-    # "ShareGPT-Chinese-English-90k/computer_cn_26k_continue.jsonl",
-    # "ShareGPT-Chinese-English-90k/computer_zh_26k.jsonl",
-    # "ShareGPT-Chinese-English-90k/unknow_zh_38k.jsonl",
-    # "ShareGPT-Chinese-English-90k/unknow_zh_38k_continue.jsonl",
-    # "firefly-train-1.1M/firefly-train-1.1M.jsonl"
-# args.max_samples # None表示不限制，不为None用于测试小样本快速验证
-# args.args.max_samples_per_file  # 每个文件最多能容纳的样本量
-
-HUMAN = '<human>'
-ROBOT = '<robot>'
-DEBUG = False
+args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_dataprocess_args.yaml')
+HUMAN = '<human>'  # human标记符
+ROBOT = '<robot>'  # answer标记符
 
 # 多进程参数, linux下可用
 USE_PARALLEL = False if os.name == 'nt' else True
-WORKERS = 8 # os.cpu_count()
+WORKERS = 8 # os.cpu_count(), 根据硬件条件配置
 MAX_QUEUE_SIZE = 2000
 tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
 
@@ -138,12 +115,11 @@ def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='
             all_count += process_data_slice(data, fi)
     
     # debug使用
-    if DEBUG:
-        print('='*60)
-        print('data_path:', data_path)
-        print('len(train_samples):', all_count)
-        print('='*60)
-        print()
+    # print('='*60)
+    # print('data_path:', data_path)
+    # print('len(train_samples):', all_count)
+    # print('='*60)
+    # print()
     return all_count
 
 
@@ -153,6 +129,34 @@ def process_alpaca(filename, tokenizer):
     def process_one(per):
         q = tokenizer.encode(HUMAN + per['instruction'] + per['input'] + ROBOT, add_special_tokens=False)
         a = tokenizer.encode(per['output'], add_special_tokens=False)
+        if len(q) + len(a) >= args.MAX_LENGTH:
+            return None, None
+        input_ids = q + a
+        labels = [args.pad_token_id] * (len(q) - 1) + input_ids[len(q):] + [args.eos_token_id]
+
+        assert len(input_ids) == len(labels)
+        return input_ids, labels
+
+    return collect_tokens(process_one, filename, data_format='json')
+
+
+def process_self_cognition(filename, tokenizer):
+    '''Tongjilibo/self_cognition'''
+    def replace_placeholder(query):
+        mapping_ = {
+                '<NAME>': args.name,
+                '<AUTHOR>': args.author,
+                '<DATE>': args.date
+                }
+        for key, value in mapping_.items():
+            query = query.replace(key, value)
+        return query
+
+    def process_one(per):
+        input = replace_placeholder(HUMAN + per['instruction'] + per['input'] + ROBOT)
+        output = replace_placeholder(per['output'])
+        q = tokenizer.encode(input, add_special_tokens=False)
+        a = tokenizer.encode(output, add_special_tokens=False)
         if len(q) + len(a) >= args.MAX_LENGTH:
             return None, None
         input_ids = q + a
@@ -322,6 +326,7 @@ def process_firefly(filename, tokenizer):
 
 
 MAPPING = {
+    'Tongjilibo/self_cognition.json': process_self_cognition,
     'alpaca-zh/alpaca_gpt4_data_zh.json': process_alpaca,
     'BelleGroup/Belle_open_source_1M.json': process_belle,
     'BelleGroup/Belle_open_source_0.5M.json': process_belle,
@@ -400,4 +405,7 @@ def main():
             ti.lap(name=f'{filename}: len={sample_count}'.ljust(70) + '-', reset=True)
 
 if __name__ == '__main__':
-    main()
+    # main()
+    filename = 'Tongjilibo/self_cognition.json'
+    USE_PARALLEL = False
+    sample_count = MAPPING[filename](filename, tokenizer)

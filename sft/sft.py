@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 from data_process import SFTDataset, collate_train_fn, get_samples_count
 from torch.utils.data.distributed import DistributedSampler
 from bert4torch.models import build_transformer_model, BaseModelDDP
-from bert4torch.snippets import JsonConfig, get_weight_decay_optim_groups, log_info
+from bert4torch.snippets import YamlConfig, get_weight_decay_optim_groups, log_info
 from bert4torch.callbacks import Checkpoint, Logger, EarlyStopping, Tensorboard, Callback
 from bert4torch.optimizers import get_linear_schedule_with_warmup
 import os
@@ -31,7 +31,7 @@ import random
 
 
 # 训练使用到的参数，可加载不同的文件
-args = JsonConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.json')
+args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.yaml')
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 filenames = glob(args.dataset_save_dir + '/*.jsonl')

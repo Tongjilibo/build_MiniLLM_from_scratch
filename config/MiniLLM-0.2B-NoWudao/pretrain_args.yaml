@@ -1,0 +1,13 @@
+include_wudao_corpus: false  # 是否包含wudao数据集
+lr: 0.0003  # 学习率
+batch_size: 32  # 每张卡的batchsize
+grad_accumulation_steps: 1  # 梯度累计
+pad_token_id: 0  # pad token id
+max_length: 1024  # 序列最大长度
+epochs: 1  # 训练的epoch数量
+weight_decay: 0.1  # 权重衰减
+interval: 2000  # 保存权重的步数
+torch_dtype: null  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
+data_path: "/data/corpus/pretrain_data_bin/**/*.bin"  # 训练数据所在路径
+config_path: "../config/MiniLLM-0.2B-NoWudao/bert4torch_config.json"  # 模型的config所在路径，不同路径可对应不同的参数规模
+save_dir: "../ckpt/MiniLLM-0.2B-NoWudao"  # 模型ckpt保存路径

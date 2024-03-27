@@ -21,7 +21,8 @@
 ## 2. 快速开始
 - 环境安装
 ```shell
-pip install bert4torch==0.4.9.post2  # 若找不到则指定　-i https://pypi.org/simple
+pip install git+https://github.com/Tongjilibo/torch4keras.git
+pip install git+https://github.com/Tongjilibo/bert4torch.git@dev
 ```
 - 脚本说明
 ```shell
@@ -72,7 +73,7 @@ python convert.py
 |----------------------------|--------------------------|---------------------|---------------------|
 | MiniLLM-0.2B-NoWudao       | ✅140亿 Tokens: Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh<br/>✅btz=32*4gpu; lr=3e-4; warmup_steps=5000; maxlen=1024 | 4×A800(80G), 单卡占用约60G，耗时20h|[百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-NoWudao)|
 | MiniLLM-0.2B-WithWudao       | ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*4gpu; lr=1.5e-4; warmup_steps=5000; maxlen=1024 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用） | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao)|
-| MiniLLM-1.1B-WithWudao| ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*8gpu; lr=1.5e-4; warmup_steps=5000; maxlen=896 |4×A800(80G), 耗时1天| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-WithWudao)|
+| MiniLLM-1.1B-WithWudao| ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*8gpu; lr=1.5e-4; warmup_steps=5000; maxlen=896 |8×A800(80G), 耗时1天| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-WithWudao)|
 
 - loss记录
 
@@ -131,6 +132,7 @@ print(response)
 ### 5.1 指令微调语料（筛选的可用数据集）
 | 数据集名称     | 介绍               |
 | ---------------- | -------------------- |
+|[Tongjilibo/self_cognition](https://huggingface.co/datasets/Tongjilibo/self_cognition)|整理的自我认知数据集，目前有100多条|
 |[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)|参考Alpaca方法基于GPT4得到的self-instruct数据，约5万条|
 |[BelleGroup/Belle-0.5M-cn](https://huggingface.co/datasets/BelleGroup/train_0.5M_CN)|包含约50万条由BELLE项目生成的中文指令数据||
 |[BelleGroup/Belle-1M-cn](https://huggingface.co/datasets/BelleGroup/train_1M_CN)| 包含约100万条由BELLE项目生成的中文指令数据|
