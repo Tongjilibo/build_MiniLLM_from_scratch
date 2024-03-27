@@ -10,12 +10,13 @@
 [Torch4keras](https://github.com/Tongjilibo/torch4keras)
 
 ## 1. 介绍
-- **初衷**：本项目旨在构建一个小参数量的llm，完整走完`预训练` -> `指令微调`  -> `奖励模型`  -> `强化学习` 四个阶段，以可控的成本完成一个可以完成简单聊天任务的chat模型
+- **初衷**：本项目旨在构建一个小参数量的llm，走完`预训练` -> `指令微调`  -> `奖励模型`  -> `强化学习` 四个阶段，以可控的成本完成一个可以完成简单聊天任务的chat模型，目前完成前两个阶段
 - **特色**: 
   - 使用[bert4torch](https://github.com/Tongjilibo/bert4torch)训练框架，代码简洁高效；
-  - 训练的checkpoint可以直接使用`transformers`包进行推理
-  - 优化了训练时候内存占用；
-  - 提供了完整训练log供复现比对
+  - 训练的checkpoint可以无缝衔接`transformers`，直接使用`transformers`包进行推理；
+  - 优化了训练时候文件读取方式，优化内存占用；
+  - 提供了完整训练log供复现比对；
+  - 增加自我认知数据集，可自定义机器人名称作者等属性。
 - **声明**: 本实验训练出来的模型，目前只具备简单的聊天功能（受限于语料大小、模型规模、sft语料大小和质量），不具备回答复杂问题的能力。
 
 ## 2. 快速开始
@@ -59,12 +60,12 @@ python convert.py
 | 中文预训练语料               | 描述                                      |
 |-------------------------|----------------------------------------|
 | [Wiki中文百科](https://huggingface.co/datasets/pleisto/wikipedia-cn-20230720-filtered)| 中文Wikipedia的数据 |
-| [BaiduBaiKe](https://pan.baidu.com/s/1jIpCHnWLTNYabftavo3DVw?pwd=bwvb) 提取码: bwvb| 中文BaiduBaiKe的数据|
-| [C4_zh：part1](https://pan.baidu.com/s/18O2Tj_PPB718K8gnaWrWUQ) 提取码：zv4r；[C4_zh：part2](https://pan.baidu.com/s/11PTgtUfFXvpNkOige9Iw4w) 提取码：sb83；[C4_zh：part3](https://pan.baidu.com/s/1248QfTS8QHPojYW-0fd5jQ) 提取码：l89d | C4是可用的最大语言数据集之一，收集了来自互联网上超过3.65亿个域的超过1560亿个token。C4_zh是其中的一部分 |
+| [BaiduBaiKe](https://pan.baidu.com/s/1jIpCHnWLTNYabftavo3DVw?pwd=bwvb)| 中文BaiduBaiKe的数据|
+| [C4_zh：part1](https://pan.baidu.com/s/18O2Tj_PPB718K8gnaWrWUQ?pwd=zv4r)；[C4_zh：part2](https://pan.baidu.com/s/11PTgtUfFXvpNkOige9Iw4w?pwd=sb83)；[C4_zh：part3](https://pan.baidu.com/s/1248QfTS8QHPojYW-0fd5jQ?pwd=l89d) | C4是可用的最大语言数据集之一，收集了来自互联网上超过3.65亿个域的超过1560亿个token。C4_zh是其中的一部分 |
 | [WuDaoCorpora](https://data.baai.ac.cn/details/WuDaoCorporaText) | 中文悟道开源的200G数据|
 | [shibing624/medical](https://huggingface.co/datasets/shibing624/medical/tree/main)| 源自shibing624的一部分医学领域的预训练数据 |
 
-项目开源了经过ChatGLM2-6B的分词器处理后的预训练语料，共计**634亿Tokens**的数据量，链接如下：[Corpus](https://pan.baidu.com/s/18o4gF-G68qfgOGWQXgAg3g) 提取码：6unr。
+项目开源了经过ChatGLM2-6B的分词器处理后的预训练语料，共计**634亿Tokens**的数据量，链接如下：[Corpus](https://pan.baidu.com/s/18o4gF-G68qfgOGWQXgAg3g?pwd=6unr)。
 
 ### 4.2 预训练权重和过程
 - 预训练细节
