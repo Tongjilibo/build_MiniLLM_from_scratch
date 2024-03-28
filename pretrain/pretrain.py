@@ -20,6 +20,7 @@ from bert4torch.models import build_transformer_model, BaseModelDDP
 from bert4torch.snippets import YamlConfig, log_info, get_weight_decay_optim_groups
 from bert4torch.callbacks import Checkpoint, Logger, Tensorboard
 from bert4torch.optimizers import get_linear_schedule_with_warmup
+from bert4torch.losses import CausalLMLoss
 from glob import glob
 
 
@@ -84,24 +85,6 @@ if args.ddp_config is not None:
 model.print_trainable_parameters()
 
 
-class CrossEntropyLoss(nn.CrossEntropyLoss):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def forward(self, logits, labels):
-        """
-        logits: [btz, seq_len, vocab_size]
-        labels: token_ids: [btz, seq_len]
-        """
-        raw_dtyps = logits.dtype
-        logits = logits.to(torch.float32)
-        logits = logits.reshape(-1, logits.shape[-1])
-        labels = labels.flatten()
-        loss = super().forward(logits, labels)
-
-        return loss.to(raw_dtyps)
-
-
 optim_groups = get_weight_decay_optim_groups(model, weight_decay=args.weight_decay)
 use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
@@ -119,7 +102,7 @@ scheduler = get_linear_schedule_with_warmup(
 )
 
 model.compile(
-    loss=CrossEntropyLoss(ignore_index=args.pad_token_id),
+    loss=CausalLMLoss(ignore_index=args.pad_token_id),
     optimizer=optimizer,
     scheduler=scheduler,
     grad_accumulation_steps=args.grad_accumulation_steps,
