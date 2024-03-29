@@ -32,7 +32,7 @@ import random
 
 
 # 训练使用到的参数，可加载不同的文件
-args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.yaml')
+args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.yaml')['sft']
 args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 filenames = glob(args.dataset_save_dir + '/*.jsonl')
