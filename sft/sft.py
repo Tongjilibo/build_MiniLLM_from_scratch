@@ -27,17 +27,18 @@ from bert4torch.losses import CausalLMLoss
 import os
 import inspect
 from glob import glob
-from collections import deque
+from collections import deque, Counter
 import random
 
 
 # 训练使用到的参数，可加载不同的文件
-args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.yaml')['sft']
-args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
-args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-SFT/sft_args.yaml')['sft']
 filenames = glob(args.dataset_save_dir + '/*.jsonl')
+random.seed(100)  # 必须在init_process_group前更新，保证one_dataset_every_time取到相同的数据集
 random.shuffle(filenames)
 args.filenames = deque(filenames)
+args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
+args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 # ========================加载数据集========================
@@ -63,6 +64,7 @@ def get_trainloader(args):
 
         filename = args.filenames.popleft()
         dataset = SFTDataset([filename], verbose=0)
+        # log_info(f'start a new dataset {filename}, len={len(dataset.data)}')
         train_dataloader = DataLoader(dataset, batch_size=args.batch_size, pin_memory=False, 
                                     drop_last=False, shuffle=False, num_workers=0 if os.name == 'nt' else 2,
                                     sampler=DistributedSampler(dataset) if args.ddp_config is not None else None,
@@ -70,6 +72,7 @@ def get_trainloader(args):
     return train_dataloader
 train_dataloader = get_trainloader(args)
 
+# 计算训练的总步数
 if args.one_dataset_every_time:
     sample_count = get_samples_count(filenames)
     total_steps = sample_count * args.epochs // (args.batch_size * args.grad_accumulation_steps)
