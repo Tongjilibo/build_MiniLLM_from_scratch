@@ -17,6 +17,7 @@
   - 优化了训练时候文件读取方式，优化内存占用；
   - 提供了完整训练log供复现比对；
   - 增加自我认知数据集，可自定义机器人名称作者等属性。
+  - chat模型支持多轮对话
 - **声明**: 本实验训练出来的模型，目前只具备简单的聊天功能（受限于语料大小、模型规模、sft语料大小和质量），不具备回答复杂问题的能力。
 
 ## 2. 快速开始
@@ -52,6 +53,7 @@ python convert.py
 ```
 
 ## 3. 更新历史
+- **20240403**: 增加基于1157万样本训练的[MiniLLM-0.2B-WithWudao-SFT](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT)，支持多轮对话
 - **20240325**: 增加1.1B模型（源于[zRzRzRzRzRzRzR](https://github.com/zRzRzRzRzRzRzR)）
 - **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-0.2B-NoWudao`和`MiniLLM-MiniLLM-0.2B-WithWudao`; SFT模型`MiniLLM-0.2B-WithWudao-SFT_Alpaca`
 
@@ -157,12 +159,23 @@ print(response)
 |         权重                  |   模型设置                    | 硬件占用和训练时长                       | 下载地址 |
 |-------------------------------|--------------------------|---------------------|---------------------|
 | MiniLLM-0.2B-WithWudao-SFT_Alpaca  |✅4万多样本，[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)<br/>✅btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca) |
-| MiniLLM-0.2B-WithWudao-SFT  |✅1157万样本，5.1中全部样本<br/>✅btz=32; lr=2e-5; 5epoch |  双卡A800，显存60g左右, 耗时3.5d| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT) |
+| MiniLLM-0.2B-WithWudao-SFT  |✅1157万样本，5.1中全部样本，支持多轮对话样本<br/>✅btz=32; lr=2e-5; 5epoch |  双卡A800，显存60g左右, 耗时4.5d| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT) |
 | zR-Llama-1b-ChatGLM2-6b-tokenizer  |✅全部语料<br/>✅btz=8; lr=2e-5; 5epoch|单卡A800, 耗时 3d 12h|[HuggingFace](https://huggingface.co/zRzRzRzRzRzRzR/zR-Llama-1b-ChatGLM2-6b-tokenizer)
 
 - loss
 
-![tensorboard](./docs/pics/tensorboard_sft.png)
+<table border="0">
+  <tbody>
+    <tr align="center" >
+      <td>
+         <a href="https://github.com/Tongjilibo/build_MiniLLM_from_scratch/blob/master/docs/pics/tensorboard_sft.png"><img width="400" height="250" src="./docs/pics/tensorboard_sft.png" alt="pic"></a><br>
+      </td>
+      <td>
+         <a href="https://github.com/Tongjilibo/build_MiniLLM_from_scratch/blob/master/docs/pics/tensorboard_sft1.png"><img width="600" height="250" src="./docs/pics/tensorboard_sft1.png" alt="pic"></a><br>
+      </td>
+      </tr>
+  </tbody>
+</table>
 
 ### 5.3 指令微调模型调用
 ```python
@@ -254,13 +267,23 @@ Assistant：上海有很多值得游览的景点，以下是一些推荐的：
 7. 上海野生动物园：这个野生动物园是上海最著名的野生动物园之一，有各种不同种类的动物，包括狮子、大象、长颈鹿、老虎等等。
 8. 上海野生动物园：这个野生动物园是一个以野生动物为主要吸引力的公园，有许多不同种类的野生动物，包括熊、鹿、狐狸、大象等等。
 以上是上海的一些值得游览的景点，每个景点都有不同的特点和特色，可以根据个人兴趣和时间选择。
+
+===================多轮对话示例 需设置history_maxlen=====================
+User：从现在开始你扮演一个名字叫露露的机器人，我是你的主人杰伦
+
+Assistant：好的！我是一个AI语言模型。我的名字是露露。很高兴与您见面。
+
+User：你叫什么名字？
+
+Assistant：我叫露露。谢谢关心！
+
 ```
 </details>
 
 ## 6. Todo
-- ⬜加入更多的sft数据
-- ⬜deepspeed方式训练
-- ⬜更大的模型规模来预训练
+- ✅ 加入更多的sft数据
+- ❎ deepspeed方式训练
+- ❎ 更大的模型规模来预训练
 
 ## 7. 鸣谢
 

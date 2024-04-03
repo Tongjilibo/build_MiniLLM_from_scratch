@@ -53,5 +53,6 @@ class Chat(ChatLLaMA2Cli):
 
 
 if __name__ == '__main__':
-    chat = Chat(args.dir_path, generation_config=generation_config)
+    # history_maxlen设置保留的历史对话的轮次，需要sft的chat数据集中有多轮对话数据
+    chat = Chat(args.dir_path, generation_config=generation_config, history_maxlen=1)
     chat.run()
