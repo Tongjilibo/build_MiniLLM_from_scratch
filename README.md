@@ -103,7 +103,8 @@ print(response)
 ```
 
 ### 4.4 预训练续写效果
-- MiniLLM-0.2B-NoWudao
+<details><summary><b>MiniLLM-0.2B-NoWudao</b></summary>
+
 ```shell
 用户：小明学习优异、身体健康、是一名
 
@@ -116,7 +117,10 @@ print(response)
 续写：床前明月光，疑是地上霜。举头望明月，低头思故乡……”
 我读着这些诗句时也倍感亲切和亲切了！
 ```
-- MiniLLM-0.2B-WithWudao
+</details>
+
+<details><summary><b>MiniLLM-0.2B-WithWudao</b></summary>
+
 ```shell
 用户：小明学习优异、身体健康、是一名
 
@@ -128,6 +132,7 @@ print(response)
 续写：床前明月光，疑是地上霜。举头望明月，低头思故乡。”这诗不仅描述了中秋夜月夜的温馨与宁静，还写出了作者对故土深情的眷恋和思乡之情。“月上柳梢头”一语，是写月下所见。“欲将心事付瑶琴”，指欲诉别情； “举头望明月”，写中秋之夜，月上高挂、皓月当空、群星闪耀的景象；“低头思故乡”，写思念故土的深情厚意。
 这首诗在写作手法上，主要运用象征
 ```
+</details>
 
 ## 5、指令微调
 ### 5.1 指令微调语料（筛选的可用数据集）
@@ -151,7 +156,8 @@ print(response)
 
 |         权重                  |   模型设置                    | 硬件占用和训练时长                       | 下载地址 |
 |-------------------------------|--------------------------|---------------------|---------------------|
-| MiniLLM-0.2B-WithWudao-SFT_Alpaca  |✅[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)<br/>✅btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca) |
+| MiniLLM-0.2B-WithWudao-SFT_Alpaca  |✅4万多样本，[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)<br/>✅btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca) |
+| MiniLLM-0.2B-WithWudao-SFT  |✅1157万样本，5.1中全部样本<br/>✅btz=32; lr=2e-5; 5epoch |  双卡A800，显存60g左右, 耗时3.5d| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT) |
 | zR-Llama-1b-ChatGLM2-6b-tokenizer  |✅全部语料<br/>✅btz=8; lr=2e-5; 5epoch|单卡A800, 耗时 3d 12h|[HuggingFace](https://huggingface.co/zRzRzRzRzRzRzR/zR-Llama-1b-ChatGLM2-6b-tokenizer)
 
 - loss
@@ -182,7 +188,9 @@ print(response)
 ```
 
 ### 5.4 指令微调Chat效果
-- MiniLLM-0.2B-WithWudao-SFT_Alpaca
+
+<details><summary><b>MiniLLM-0.2B-WithWudao-SFT_Alpaca</b></summary>
+
 ```shell
 User：你好
 
@@ -206,11 +214,53 @@ Assistant：如果你想要制作一个番茄炒蛋，那么下面这些步骤�
 
 注意：想要炒出更丰富的蔬菜味道，可以适当加入适量的盐和香菜，增加风味。
 ```
+</details>
+
+<details><summary><b>MiniLLM-0.2B-WithWudao-SFT</b></summary>
+
+```shell
+User：你好
+
+Assistant：你好！我今天能为你做些什么呢？
+
+User：你是谁
+
+Assistant：我是MOSS，由复旦大学自然语言处理实验室和上海人工智能实验室开发，我的目标是帮助人类执行常见的自然语言处理任务。我可以执行各种任务，如回答问题、提供建议、生成代码、聊天等。如果您有其他问题，请随时问我。
+
+User：你能做什么？
+
+Assistant：我是一个大型语言模型，可以帮助人类执行各种自然语言处理任务，例如回答问题、提供建议、生成代码、聊天等。
+
+User：天气如何查询
+
+Assistant：您可以使用在线天气查询服务，如中国气象局、中国气象网、中国气象台等，它们可以为您提供实时的天气预报和天气预报信息。另外，您也可以使用手机应用程序，如百度天气、百度地图等，来获取有关当地天气和气候的信息。
+
+User：介绍下诗人李白
+
+Assistant：李白是唐朝著名的诗人，被誉为“诗仙”，被誉为“诗仙”。他的诗歌以豪放、奔放、自由著称，对后世诗歌产生了深远影响。
+李白的诗歌风格独特，以豪放、奔放、清新、浪漫著称。他的代表作品有《将进酒》、《庐山谣》、《静夜思》等。
+李白的诗歌风格具有豪放、奔放、自由的特点，他的诗歌多以自然景物、人物情感为主，注重表现自然风光和人生经历，以抒发情感、抒发思想为主要表现形式。
+李白的诗歌具有很高的艺术价值，对后世的文学创作产生了深远的影响。他的诗歌至今仍然被广泛传颂和传颂。
+
+User：上海有什么景点推荐
+
+Assistant：上海有很多值得游览的景点，以下是一些推荐的：
+1. 上海博物馆：拥有大量文物和艺术藏品，展示了中国历史、文化和艺术的发展。
+2. 上海外滩：这里是中国最著名的旅游景点之一，拥有壮丽的建筑和美丽的景色。
+3. 上海迪士尼乐园：一个著名的主题公园，有各种不同的游乐设施和演出，适合家庭出游。
+4. 田子坊：这是一个充满文艺气息的社区，有许多小吃和商店，可以体验当地文化和购物乐趣。
+5. 上海科技馆：这是一个科技博物馆，展示各种科技产品和发明，包括电子、计算机、机器人等等。
+6. 上海科技馆：这是一个专门为儿童和青少年设计的科技博物馆，有各种主题游戏和科学实验。
+7. 上海野生动物园：这个野生动物园是上海最著名的野生动物园之一，有各种不同种类的动物，包括狮子、大象、长颈鹿、老虎等等。
+8. 上海野生动物园：这个野生动物园是一个以野生动物为主要吸引力的公园，有许多不同种类的野生动物，包括熊、鹿、狐狸、大象等等。
+以上是上海的一些值得游览的景点，每个景点都有不同的特点和特色，可以根据个人兴趣和时间选择。
+```
+</details>
 
 ## 6. Todo
-- ⬜deepspeed方式训练
 - ⬜加入更多的sft数据
-- ⬜更大的模型规模来
+- ⬜deepspeed方式训练
+- ⬜更大的模型规模来预训练
 
 ## 7. 鸣谢
 

@@ -9,3 +9,4 @@ __pycache__
 data
 test
 *.jsonl
+sft_data
