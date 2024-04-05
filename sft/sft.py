@@ -152,7 +152,7 @@ if __name__ == '__main__':
     ts_board = Tensorboard(args.save_dir + '/tensorboard')  # tensorboard
     callbacks = [checkpoint, logger, ts_board]
     if args.ddp_config is not None:
-        model.disable_run_callbacks(callbacks)
+        model.disable_workers_callback(callbacks)
     if args.one_dataset_every_time:
         callbacks = [GenTrainLoader()] + callbacks
     

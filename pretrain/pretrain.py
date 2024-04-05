@@ -1,11 +1,14 @@
 #! -*- coding: utf-8 -*-
-"""
-预训练
-单机多卡训练
+""" 预训练
+
+1. 单机多卡训练
 torchrun --standalone --nproc_per_node=4 pretrain.py
 
-多机多卡训练
+2. 多机多卡训练
 NCCL_DEBUG=INFO TORCH_NCCL_BLOCKING_WAIT=1 NCCL_IB_DISABLE=1 NCCL_SOCKET_IFNAME=你的网卡类型  torchrun --nnodes=你的主机数量 --node_rank=编号 --master_addr=你的master节点IP --master_port=12346 --nproc_per_node=8 pretrain.py
+
+3. deepspeed方式训练
+deepspeed --num_gpus=1 --master_port $(shuf -n 1 -i 10000-65535) pretrain.py  --deepspeed ../config/MiniLLM-0.2B-WithWudao/ds_config.json
 """
 
 import os
@@ -16,8 +19,8 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
-from bert4torch.models import build_transformer_model, BaseModelDDP
-from bert4torch.snippets import YamlConfig, log_info, get_weight_decay_optim_groups
+from bert4torch.models import build_transformer_model, BaseModelDDP, DeepSpeedTrainer
+from bert4torch.snippets import YamlConfig, log_info, get_weight_decay_optim_groups, argument_parse
 from bert4torch.callbacks import Checkpoint, Logger, Tensorboard
 from bert4torch.optimizers import get_linear_schedule_with_warmup
 from bert4torch.losses import CausalLMLoss
@@ -26,7 +29,14 @@ from glob import glob
 
 # 训练使用到的参数，可加载不同的文件
 args = YamlConfig('../config/MiniLLM-0.2B-WithWudao/pretrain_args.yaml')
-args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
+if os.environ.get("RANK") is None:  # 单卡
+    args.train_mode = 'single'
+elif argument_parse('deepspeed').deepspeed is not None:  # deepspeed
+    args.train_mode = 'deepspeed'
+else:  # DDP
+    args.train_mode = 'ddp'
+    args.ddp_config = BaseModelDDP.init_process_group()
+
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.resume_path = None
 args.filenames = [i for i in glob(args.data_path, recursive=True)]
@@ -68,50 +78,48 @@ train_dataloader = DataLoader(dataset,
                               pin_memory=False,
                               drop_last=False, shuffle=False,
                               num_workers=0 if os.name == 'nt' else 4,
-                              sampler=DistributedSampler(dataset) if args.ddp_config is not None else None)
+                              sampler=DistributedSampler(dataset) if args.train_mode == 'ddp' else None)
 
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True,
                                 torch_dtype=args.torch_dtype)
 model.to(args.device)
-
-if args.ddp_config is not None:
-    model = BaseModelDDP(
-        model,
-        master_rank=0,
-        device_ids=[args.ddp_config.local_rank],
-        output_device=args.ddp_config.local_rank,
-        find_unused_parameters=False
-    )
 model.print_trainable_parameters()
 
+if args.train_mode in {'single', 'ddp'}:
+    model = BaseModelDDP(model) if args.train_mode == 'ddp' else model
 
-optim_groups = get_weight_decay_optim_groups(model, weight_decay=args.weight_decay)
-use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
-extra_args = dict(fused=True) if use_fused else dict()
-optimizer = optim.AdamW(
-    optim_groups,
-    lr=args.lr,
-    betas=(0.9, 0.95),
-    **extra_args
-)
+    optim_groups = get_weight_decay_optim_groups(model, weight_decay=args.weight_decay)
+    use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
+    extra_args = dict(fused=True) if use_fused else dict()
+    optimizer = optim.AdamW(
+        optim_groups,
+        lr=args.lr,
+        betas=(0.9, 0.95),
+        **extra_args
+    )
 
-scheduler = get_linear_schedule_with_warmup(
-    optimizer,
-    5000,
-    len(train_dataloader) * args.epochs // args.grad_accumulation_steps
-)
+    scheduler = get_linear_schedule_with_warmup(
+        optimizer,
+        5000,
+        len(train_dataloader) * args.epochs // args.grad_accumulation_steps
+    )
 
-model.compile(
-    loss=CausalLMLoss(ignore_index=args.pad_token_id),
-    optimizer=optimizer,
-    scheduler=scheduler,
-    grad_accumulation_steps=args.grad_accumulation_steps,
-    clip_grad_norm=1.0,
-    mixed_precision=True if args.torch_dtype is None else False
-)
+    model.compile(
+        loss=CausalLMLoss(ignore_index=args.pad_token_id),
+        optimizer=optimizer,
+        scheduler=scheduler,
+        grad_accumulation_steps=args.grad_accumulation_steps,
+        clip_grad_norm=1.0,
+        mixed_precision=True if args.torch_dtype is None else False
+    )
+
+elif args.train_mode == 'deepspeed':
+    model = DeepSpeedTrainer(model)
+    model.compile(loss=CausalLMLoss(ignore_index=args.pad_token_id))
+
 
 if args.resume_path:
-    mapping = None if args.ddp_config is not None else lambda x: x.replace('module.', '')
+    mapping = None if args.train_mode == 'ddp' else lambda x: x.replace('module.', '')
     model.resume_from_checkpoint(args.resume_path, mapping=None)
 
 if __name__ == '__main__':
@@ -126,6 +134,6 @@ if __name__ == '__main__':
                             save_on_train_end=True)
     ts_board = Tensorboard(args.save_dir + '/tensorboard')  # tensorboard
     callbacks = [checkpoint, logger, ts_board]
-    if args.ddp_config is not None:
-        model.disable_run_callbacks(callbacks)
+    if args.train_mode == 'ddp':
+        model.disable_workers_callback(callbacks)
     model.fit(train_dataloader, steps_per_epoch=None, epochs=args.epochs, callbacks=callbacks)
