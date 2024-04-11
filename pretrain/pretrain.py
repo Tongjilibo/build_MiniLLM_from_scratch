@@ -1,13 +1,16 @@
 #! -*- coding: utf-8 -*-
 """ 预训练
 
-1. 单机多卡训练
+1. 单机单卡
+python pretrain.py
+
+2. 单机多卡训练
 torchrun --standalone --nproc_per_node=4 pretrain.py
 
-2. 多机多卡训练
+3. 多机多卡训练
 NCCL_DEBUG=INFO TORCH_NCCL_BLOCKING_WAIT=1 NCCL_IB_DISABLE=1 NCCL_SOCKET_IFNAME=你的网卡类型  torchrun --nnodes=你的主机数量 --node_rank=编号 --master_addr=你的master节点IP --master_port=12346 --nproc_per_node=8 pretrain.py
 
-3. deepspeed方式训练
+4. deepspeed方式训练
 deepspeed --num_gpus=1 --master_port $(shuf -n 1 -i 10000-65535) pretrain.py  --deepspeed ../config/MiniLLM-0.2B-WithWudao/ds_config.json
 """
 
@@ -27,6 +30,7 @@ from bert4torch.losses import CausalLMLoss
 from glob import glob
 
 
+# ==============================参数区==============================
 # 训练使用到的参数，可加载不同的文件
 args = YamlConfig('../config/MiniLLM-0.2B-WithWudao/pretrain_args.yaml')
 if os.environ.get("RANK") is None:  # 单卡
@@ -35,18 +39,21 @@ elif argument_parse('deepspeed').deepspeed is not None:  # deepspeed
     args.train_mode = 'deepspeed'
 else:  # DDP
     args.train_mode = 'ddp'
-    args.ddp_config = BaseModelDDP.init_process_group()
-
+    BaseModelDDP.init_process_group()
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.resume_path = None
+
+
+# ==============================数据处理==============================
 args.filenames = [i for i in glob(args.data_path, recursive=True)]
 if not args.include_wudao_corpus:
     args.filenames = [i for i in args.filenames if 'wudaocorpus' not in i]
 
-
 class MyDataset(Dataset):
+    """加载数据
+    这里保存了多个文件到sample的映射, 以便于节约内存
+    """
     def __init__(self, filenames):
-        """加载数据"""
         self.data = []
         self.index_map = {}
         self.token_size, self.smp_size = 0, 0
@@ -71,7 +78,6 @@ class MyDataset(Dataset):
         Y = np.array(sample[1:]).astype(np.int64)
         return torch.from_numpy(X), torch.from_numpy(Y)
 
-
 dataset = MyDataset(args.filenames)
 train_dataloader = DataLoader(dataset,
                               batch_size=args.batch_size,
@@ -80,11 +86,14 @@ train_dataloader = DataLoader(dataset,
                               num_workers=0 if os.name == 'nt' else 4,
                               sampler=DistributedSampler(dataset) if args.train_mode == 'ddp' else None)
 
+
+# ==============================模型生成==============================
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True,
                                 torch_dtype=args.torch_dtype)
 model.to(args.device)
 model.print_trainable_parameters()
 
+# 使用单gpu，或者ddp
 if args.train_mode in {'single', 'ddp'}:
     model = BaseModelDDP(model) if args.train_mode == 'ddp' else model
 
@@ -112,15 +121,15 @@ if args.train_mode in {'single', 'ddp'}:
         clip_grad_norm=1.0,
         mixed_precision=True if args.torch_dtype is None else False
     )
-
+# 使用deepspeed
 elif args.train_mode == 'deepspeed':
     model = DeepSpeedTrainer(model)
     model.compile(loss=CausalLMLoss(ignore_index=args.pad_token_id))
 
-
+# 断点续训
 if args.resume_path:
-    mapping = None if args.train_mode == 'ddp' else lambda x: x.replace('module.', '')
-    model.resume_from_checkpoint(args.resume_path, mapping=None)
+    model.resume_from_checkpoint(args.resume_path)
+
 
 if __name__ == '__main__':
     logger = Logger(args.save_dir + '/log_pretrain.log')

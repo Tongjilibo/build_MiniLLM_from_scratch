@@ -18,7 +18,9 @@ args.model_path = '../ckpt/MiniLLM-0.2B-WithWudao/final/model.pt'
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
 model.to(args.device)
-model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))
+
+model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', ''))  # 加载权重-单卡/ddp
+# model.load_state_dict(torch.load(args.model_path)['module'], strict=True)  # deepspeed
 
 generation_config = {
     'tokenizer': tokenizer,

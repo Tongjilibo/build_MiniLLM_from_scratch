@@ -10,3 +10,4 @@ data
 test
 *.jsonl
 sft_data
+*_ds.yaml
