@@ -1,0 +1,15 @@
+{
+    "model": "llama",
+    "hidden_size": 1024,
+    "intermediate_size": 2752, 
+    "num_attention_heads": 8,
+    "num_hidden_layers": 12,
+    "hidden_act": "silu",
+    "vocab_size": 64793,
+    "segment_vocab_size": 0,
+    "layer_norm_eps": 1e-06,
+    "rope_rank": "updown",
+    "flash_attention": true,
+    "tie_emb_prj_weight": true,
+    "is_causal": true
+}

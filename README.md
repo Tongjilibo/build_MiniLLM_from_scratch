@@ -280,16 +280,25 @@ Assistant：我叫露露。谢谢关心！
 ```
 </details>
 
-## 6. Todo
-- ✅ 加入更多的sft数据
-- ❎ deepspeed方式训练
-- ❎ 更大的模型规模来预训练
+## 6、对齐模型(DPO)
+### 6.1 DPO 语料（筛选的可用数据集）
+| 数据集名称     | 介绍               |
+| ---------------- | -------------------- |
+|[hiyouga/DPO-En-Zh-20k](https://huggingface.co/datasets/hiyouga/DPO-En-Zh-20k)|LLaMA Factory开源的dpo数据集|
+|[dikw/hh_rlhf_cn](https://huggingface.co/datasets/dikw/hh_rlhf_cn)|[Anthropic/hh-rlhf](https://huggingface.co/datasets/Anthropic/hh-rlhf)的汉化版|
 
-## 7. 鸣谢
+### 6.2 DPO 权重和过程
+### 6.3 DPO 模型调用
+### 6.4 DPO Chat效果
+
+## 7. Todo
+- ❎ 对齐模型
+
+## 8. 鸣谢
 
 - 感谢[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)，本实现有不少地方参考该项目
 
-## 8. 引用
+## 9. 引用
 
 ```
 @misc{build_MiniLLM_from_scratch,
@@ -300,7 +309,7 @@ Assistant：我叫露露。谢谢关心！
 }
 ```
 
-## 9. 其他
+## 10. 其他
 
 - Wechat & Star History Chart
 

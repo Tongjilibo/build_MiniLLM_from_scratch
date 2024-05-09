@@ -11,3 +11,4 @@ test
 *.jsonl
 sft_data
 *_ds.yaml
+dpo/dpo.py
