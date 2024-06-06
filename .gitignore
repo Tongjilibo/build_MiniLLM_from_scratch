@@ -8,7 +8,4 @@ __pycache__
 *.idea
 data
 test
-*.jsonl
-sft_data
 *_ds.yaml
-dpo/dpo.py

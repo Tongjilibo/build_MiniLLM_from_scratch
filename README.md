@@ -286,6 +286,9 @@ Assistant：我叫露露。谢谢关心！
 | ---------------- | -------------------- |
 |[hiyouga/DPO-En-Zh-20k](https://huggingface.co/datasets/hiyouga/DPO-En-Zh-20k)|LLaMA Factory开源的dpo数据集|
 |[dikw/hh_rlhf_cn](https://huggingface.co/datasets/dikw/hh_rlhf_cn)|[Anthropic/hh-rlhf](https://huggingface.co/datasets/Anthropic/hh-rlhf)的汉化版|
+|[iic/CValues-Comparison](https://www.modelscope.cn/datasets/iic/CValues-Comparison/summary)|CValues-Comparison 中文大模型价值观比较数据集|
+|[beyond/rlhf-reward-single-round-trans_chinese](https://huggingface.co/datasets/beyond/rlhf-reward-single-round-trans_chinese)||
+|[liyucheng/zhihu_rlhf_3k](https://huggingface.co/datasets/liyucheng/zhihu_rlhf_3k)|知乎数据集|
 
 ### 6.2 DPO 权重和过程
 ### 6.3 DPO 模型调用
