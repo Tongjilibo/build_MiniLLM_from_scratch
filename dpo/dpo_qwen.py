@@ -105,7 +105,7 @@ for param in filter(lambda p: p.requires_grad, net.parameters()):
 net.to(args.device)
 
 if args.use_peft:
-    from peft import LoraConfig, TaskType
+    from peft import LoraConfig
     peft_config = LoraConfig(
         inference_mode=False,
         r=8,

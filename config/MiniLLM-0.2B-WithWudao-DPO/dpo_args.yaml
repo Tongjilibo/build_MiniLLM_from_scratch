@@ -12,7 +12,7 @@ dpo:
   model_path: "../ckpt/MiniLLM-0.2B-WithWudao-SFT/final_2.1458/model.pt"  # 预训练模型权重路径
   config_path: "../config/MiniLLM-0.2B-WithWudao-DPO/bert4torch_config.json"  # 预训练模型权重config
   save_dir: "../ckpt/MiniLLM-0.2B-WithWudao-DPO"  # 模型ckpt保存路径
-  dataset_save_dir: "../dpo_data"  # dpo的训练数据所在路径
+  dataset_save_dir: "../data/dpo_data"  # dpo的训练数据所在路径
   use_peft: True
   fp16: True
 
@@ -25,7 +25,7 @@ data_process:
           "AI-ModelScope@hh_rlhf_cn/hh_rlhf_train.jsonl",
           "AI-ModelScope@hh_rlhf_cn/hh_rlhf_test.jsonl",
           "hiyouga@DPO-En-Zh-20k/dpo_zh.json",
-      ]  # dpo待处理的数据集，因为数据集很大，按照实际情况按需使用，比如只使用alpaca-zh
-  dataset_save_dir: "../dpo_data"  # 处理好的文件存储路径
+      ]
+  dataset_save_dir: "../data/dpo_data"  # 处理好的文件存储路径
   max_samples: null  # None表示不限制，不为None用于测试小样本快速验证
   max_samples_per_file: 100000  # 每个文件最多能容纳的样本量，用于切分大文件

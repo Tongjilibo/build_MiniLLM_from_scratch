@@ -62,8 +62,9 @@ def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='
             train_samples = [process_one(line) for line in data_slice]
         else:
             log_info_once('Use multiprocess to accelerate data process')
-            train_samples = parallel_apply(func=process_one, iterable=data_slice, workers=WORKERS, max_queue_size=MAX_QUEUE_SIZE,
-                                        dummy=False, callback=None, unordered=False)
+            train_samples = parallel_apply(func=process_one, iterable=data_slice, workers=WORKERS, 
+                                           max_queue_size=MAX_QUEUE_SIZE,
+                                           dummy=False, callback=None, unordered=False)
         train_samples = [{'prompt_ids':i[0], 'chosen_ids':i[1], 'rejected_ids':i[2]} for i in train_samples if i[0] is not None and len(i[0])>1]
 
         save_path = os.path.join(args.dataset_save_dir, filename.replace('/', '--').replace('.jsonl', '').replace('.json', '') + f'_{fi}.jsonl')

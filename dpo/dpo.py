@@ -15,6 +15,7 @@ NCCL_DEBUG=INFO TORCH_NCCL_BLOCKING_WAIT=1 NCCL_IB_DISABLE=1 NCCL_SOCKET_IFNAME=
 """
 import torch
 import torch.optim as optim
+from transformers.optimization import AdamW
 from torch.utils.data import DataLoader
 from data_process import DPODataset, collate_train_fn, get_samples_count
 from torch.utils.data.distributed import DistributedSampler
@@ -61,6 +62,8 @@ total_steps = len(train_dataloader) * args.epochs // args.grad_accumulation_step
 net = build_transformer_model(
     config_path=args.config_path,
     checkpoint_path=None,
+    is_causal=False,
+    tie_word_embeddings=True,
     add_trainer=True
 )
 net.to(args.device)
@@ -71,8 +74,8 @@ if args.use_peft:
     peft_config = LoraConfig(
         inference_mode=False,
         r=8,
-        lora_alpha=32,
-        lora_dropout=0.1,
+        lora_alpha=16,
+        lora_dropout=0.05,
         target_modules=find_all_linear_names(
             net, 
             int4=getattr(args, 'load_in_4bit', False), 
@@ -84,7 +87,6 @@ trainer = DPOTrainer(
     ref_model=None if args.use_peft else deepcopy(net),
     args=args,
     peft_config=peft_config if args.use_peft else None)
-optimizer = optim.AdamW(net.parameters(), args.lr)
 
 
 if args.ddp_config is not None:
@@ -101,16 +103,16 @@ if args.ddp_config is not None:
 optim_groups = get_weight_decay_optim_groups(net, weight_decay=args.weight_decay)
 use_fused = 'fused' in inspect.signature(torch.optim.AdamW).parameters
 extra_args = dict(fused=True) if use_fused else dict()
-optimizer = optim.AdamW(
+optimizer = AdamW(
     optim_groups,
     lr=args.lr,
-    betas=(0.9, 0.95),
-    **extra_args
+    betas=(0.9, 0.999),
+    eps = 1e-8
 )
 
-scheduler = get_cosine_schedule_with_warmup(optimizer, min(5000, int(0.1 * total_steps)), total_steps)
+scheduler = get_cosine_schedule_with_warmup(optimizer, min(1000, int(0.1 * total_steps)), total_steps)
 trainer.compile(
-    loss=DPOLoss(pad_token_id=args.pad_token_id),
+    loss=DPOLoss(pad_token_id=args.pad_token_id, offset=False),  # 在collate_fn中提前做过
     optimizer=optimizer,
     scheduler=scheduler,
     grad_accumulation_steps=args.grad_accumulation_steps,
