@@ -22,7 +22,8 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
-from bert4torch.models import build_transformer_model, BaseModelDDP, DeepSpeedTrainer
+from bert4torch.models import build_transformer_model, BaseModelDDP
+from bert4torch.trainer import DeepSpeedTrainer
 from bert4torch.snippets import YamlConfig, log_info, get_weight_decay_optim_groups, argument_parse
 from bert4torch.callbacks import Checkpoint, Logger, Tensorboard
 from bert4torch.optimizers import get_linear_schedule_with_warmup

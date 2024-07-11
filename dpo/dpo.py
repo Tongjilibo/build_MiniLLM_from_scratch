@@ -1,6 +1,6 @@
 #! -*- coding: utf-8 -*-
 """
-========DPO========
+========DPO（还在调试）========
 单机多卡训练
 torchrun --standalone --nproc_per_node=4 dpo.py
 多机多卡训练
