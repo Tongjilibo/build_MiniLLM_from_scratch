@@ -315,6 +315,7 @@ Assistant：我叫露露。谢谢关心！
 ## 10. 其他
 
 - Wechat & Star History Chart
+- 微信群人数超过200个（有邀请限制），可添加个人微信拉群
 
 <table border="0">
   <tbody>
