@@ -22,7 +22,7 @@ import numpy as np
 
 
 # ================================数据处理的参数================================
-args = YamlConfig('./config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.yaml')['data_process']
+args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.yaml')['data_process']
 HUMAN = '<human>'  # human标记符
 ROBOT = '<robot>'  # answer标记符
 
@@ -30,7 +30,7 @@ ROBOT = '<robot>'  # answer标记符
 USE_PARALLEL = False if os.name == 'nt' else True
 WORKERS = 8 # os.cpu_count(), 根据硬件条件配置
 MAX_QUEUE_SIZE = 2000
-tokenizer = AutoTokenizer.from_pretrained('./config', trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained('../config', trust_remote_code=True)
 
 
 # ================================数据处理过程================================

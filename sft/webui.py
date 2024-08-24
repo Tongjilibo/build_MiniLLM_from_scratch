@@ -2,16 +2,16 @@ import os
 import torch
 from bert4torch.models import build_transformer_model
 from bert4torch.snippets import DottableDict
-from bert4torch.pipelines import ChatLLaMA2WebGradio
+from bert4torch.pipelines.chat import ChatWebGradio, LLaMA2
 from transformers import AutoTokenizer
 from data_process import HUMAN, ROBOT
 
 args = DottableDict()
 args.max_length = 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.dir_path = './config'
+args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'bert4torch_config.json')
-args.model_path = './ckpt/MiniLLM-0.2B-WithWudao-SFT_Alpaca/final_1.5136/model.pt'
+args.model_path = '../ckpt/MiniLLM-0.2B-WithWudao-SFT_Alpaca/final_1.5136/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 
@@ -29,13 +29,18 @@ generation_config = {
     'include_input': False
 }
 
-class Chat(ChatLLaMA2WebGradio):
-    def build_prompt(self, query, history) -> str:
+class Chat(ChatWebGradio, LLaMA2):
+    def build_prompt(self, query, history, functions) -> str:
         texts = ''
-        for user_input, response in history:
-            texts += f'{HUMAN}{user_input}{ROBOT}{response}'
+        for query_or_response in history:
+            role, content = query_or_response['role'], query_or_response['content'].strip()
+            if role == 'user':
+                texts += f'{HUMAN}{content}'
+            elif role == 'assistant':
+                texts += f"{ROBOT}{content}"
 
         texts += f'{HUMAN}{query}{ROBOT}'
+        history.append({"role": "user", "content": query})
         return texts
 
     def build_model(self):

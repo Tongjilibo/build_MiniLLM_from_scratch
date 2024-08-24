@@ -11,9 +11,9 @@ from transformers import AutoTokenizer
 args = DottableDict()
 args.max_length = 128
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.dir_path = './config'
+args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'MiniLLM-0.2B-WithWudao/bert4torch_config.json')
-args.model_path = './ckpt/MiniLLM-0.2B-WithWudao/final_3.1822/model.pt'
+args.model_path = '../ckpt/MiniLLM-0.2B-WithWudao/final_3.1822/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
