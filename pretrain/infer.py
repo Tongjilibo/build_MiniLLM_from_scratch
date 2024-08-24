@@ -11,9 +11,9 @@ from transformers import AutoTokenizer
 args = DottableDict()
 args.max_length = 128
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.dir_path = '../config'
+args.dir_path = './config'
 args.config_path = os.path.join(args.dir_path, 'MiniLLM-0.2B-WithWudao/bert4torch_config.json')
-args.model_path = '../ckpt/MiniLLM-0.2B-WithWudao/final/model.pt'
+args.model_path = './ckpt/MiniLLM-0.2B-WithWudao/final_3.1822/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
 model = build_transformer_model(config_path=args.config_path, checkpoint_path=None, add_trainer=True)
@@ -25,10 +25,10 @@ model.load_weights(args.model_path, mapping=lambda x: x.replace('module.', '')) 
 generation_config = {
     'tokenizer': tokenizer,
     'tokenizer_config': {'skip_special_tokens': True, 'add_special_tokens': False},
-    'start_id': None,
-    'end_id': tokenizer.eos_token_id,
-    'topk': 40,
-    'topp': 0.8,
+    'bos_token_id': None,
+    'eos_token_id': tokenizer.eos_token_id,
+    'top_k': 40,
+    'top_p': 0.8,
     'repetition_penalty': 1.1,
     'mode': 'random_sample',
     'max_length': args.max_length,

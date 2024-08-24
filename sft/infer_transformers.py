@@ -12,7 +12,7 @@ from threading import Thread
 from data_process import HUMAN, ROBOT
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-pretrained_model_name_or_path = '../ckpt/MiniLLM-1.1B-WithWudao-SFT/final_transformers'
+pretrained_model_name_or_path = './ckpt/MiniLLM-1.1B-WithWudao-SFT/final_transformers'
 
 # pretrained_model_name_or_path：预训练模型的本地路径或model_name(连接huggingface下载)
 # Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca

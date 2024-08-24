@@ -9,10 +9,10 @@ dpo:
   weight_decay: 0.05  # 权重衰减
   interval: 2000  # 保存权重的步数
   torch_dtype: null  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
-  model_path: "../ckpt/MiniLLM-0.2B-WithWudao-SFT/final_2.1458/model.pt"  # 预训练模型权重路径
-  config_path: "../config/MiniLLM-0.2B-WithWudao-DPO/bert4torch_config.json"  # 预训练模型权重config
-  save_dir: "../ckpt/MiniLLM-0.2B-WithWudao-DPO"  # 模型ckpt保存路径
-  dataset_save_dir: "../data/dpo_data"  # dpo的训练数据所在路径
+  model_path: "./ckpt/MiniLLM-0.2B-WithWudao-SFT/final_2.1458/model.pt"  # 预训练模型权重路径
+  config_path: "./config/MiniLLM-0.2B-WithWudao-DPO/bert4torch_config.json"  # 预训练模型权重config
+  save_dir: "./ckpt/MiniLLM-0.2B-WithWudao-DPO"  # 模型ckpt保存路径
+  dataset_save_dir: "./data/dpo_data"  # dpo的训练数据所在路径
   use_peft: True
   fp16: True
 
@@ -26,6 +26,6 @@ data_process:
           "AI-ModelScope@hh_rlhf_cn/hh_rlhf_test.jsonl",
           "hiyouga@DPO-En-Zh-20k/dpo_zh.json",
       ]
-  dataset_save_dir: "../data/dpo_data"  # 处理好的文件存储路径
+  dataset_save_dir: "./data/dpo_data"  # 处理好的文件存储路径
   max_samples: null  # None表示不限制，不为None用于测试小样本快速验证
   max_samples_per_file: 100000  # 每个文件最多能容纳的样本量，用于切分大文件

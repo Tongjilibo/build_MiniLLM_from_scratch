@@ -7,10 +7,10 @@ from bert4torch.models import build_transformer_model
 from bert4torch.snippets import copytree
 import shutil
 
-config_dir = '../config'
+config_dir = './config'
 config_path = config_dir + '/MiniLLM-1.1B-WithWudao-SFT/bert4torch_config.json'
-model_path = '../ckpt/MiniLLM-1.1B-WithWudao-SFT/final/model.pt'
-save_dir = '../ckpt/MiniLLM-1.1B-WithWudao-SFT/final_transformers'
+model_path = './ckpt/MiniLLM-1.1B-WithWudao-SFT/final/model.pt'
+save_dir = './ckpt/MiniLLM-1.1B-WithWudao-SFT/final_transformers'
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir, exist_ok=True)

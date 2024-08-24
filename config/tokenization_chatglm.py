@@ -180,7 +180,7 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
             token_ids_1 (`List[int]`, *optional*):
                 Optional second list of IDs for sequence pairs.
         Returns:
-            `List[int]`: List of [input IDs](../glossary#input-ids) with the appropriate special tokens.
+            `List[int]`: List of [input IDs](./glossary#input-ids) with the appropriate special tokens.
         """
         prefix_tokens = self.get_prefix_tokens()
         token_ids_0 = prefix_tokens + token_ids_0

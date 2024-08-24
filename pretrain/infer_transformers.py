@@ -16,7 +16,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # Tongjilibo/MiniLLM-0.2B-NoWudao
 # Tongjilibo/MiniLLM-0.2B-WithWudao
 # Tongjilibo/MiniLLM-1.1B-WithWudao
-pretrained_model_name_or_path = '../ckpt/MiniLLM-1.1B-WithWudao/final_transformers'
+pretrained_model_name_or_path = './ckpt/MiniLLM-1.1B-WithWudao/final_transformers'
 
 tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path, trust_remote_code=True)
 model = LlamaForCausalLM.from_pretrained(pretrained_model_name_or_path).to(device)
