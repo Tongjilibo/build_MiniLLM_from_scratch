@@ -87,7 +87,6 @@ trainer_type = 'ddp' if args.ddp_config is not None else 'base'
 trainer = DPOTrainer(
     net, 
     ref_model=None if args.use_peft else deepcopy(net),
-    args=args,
     peft_config=peft_config if args.use_peft else None,
     trainer_type=trainer_type)
 

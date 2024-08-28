@@ -22,7 +22,7 @@ import numpy as np
 
 
 # ================================数据处理的参数================================
-args = YamlConfig('../config/dpo/iniLLM-0.2B-WithWudao-DPO/dpo_args.yaml')['data_process']
+args = YamlConfig('../config/dpo/MiniLLM-0.2B-WithWudao-DPO/dpo_args.yaml')['data_process']
 HUMAN = '<human>'  # human标记符
 ROBOT = '<robot>'  # answer标记符
 
