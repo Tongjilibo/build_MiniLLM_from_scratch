@@ -7,7 +7,7 @@ import json
 import glob
 import numpy as np
 from tqdm import tqdm
-from ..config.tokenization_chatglm import ChatGLMTokenizer
+from ..tokenizer.tokenization_chatglm import ChatGLMTokenizer
 
 
 def process_wiki_clean():

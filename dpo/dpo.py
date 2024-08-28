@@ -34,7 +34,7 @@ from copy import deepcopy
 
 
 # 训练使用到的参数，可加载不同的文件
-args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-DPO/dpo_args.yaml')['dpo']
+args = YamlConfig('../config/dpo/MiniLLM-0.2B-WithWudao-DPO/dpo_args.yaml')['dpo']
 filenames = glob(args.dataset_save_dir + '/*.jsonl')
 random.seed(100)
 random.shuffle(filenames)

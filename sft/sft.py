@@ -32,7 +32,7 @@ import random
 
 
 # 训练使用到的参数，可加载不同的文件
-args = YamlConfig('../config/MiniLLM-0.2B-WithWudao-SFT/sft_args.yaml')['sft']
+args = YamlConfig('../config/sft/MiniLLM-0.2B-WithWudao-SFT/sft_args.yaml')['sft']
 filenames = glob(args.dataset_save_dir + '/*.jsonl')
 random.seed(100)  # 必须在init_process_group前更新，保证one_dataset_every_time取到相同的数据集
 random.shuffle(filenames)

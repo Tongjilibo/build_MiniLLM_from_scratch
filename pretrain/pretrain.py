@@ -11,7 +11,7 @@ torchrun --standalone --nproc_per_node=4 pretrain.py
 NCCL_DEBUG=INFO TORCH_NCCL_BLOCKING_WAIT=1 NCCL_IB_DISABLE=1 NCCL_SOCKET_IFNAME=你的网卡类型  torchrun --nnodes=你的主机数量 --node_rank=编号 --master_addr=你的master节点IP --master_port=12346 --nproc_per_node=8 pretrain.py
 
 4. deepspeed方式训练
-deepspeed --num_gpus=1 --master_port $(shuf -n 1 -i 10000-65535) pretrain.py  --deepspeed ../config/MiniLLM-0.2B-WithWudao/ds_config.json
+deepspeed --num_gpus=1 --master_port $(shuf -n 1 -i 10000-65535) pretrain.py  --deepspeed ../config/pretrain/MiniLLM-0.2B-WithWudao/ds_config.json
 """
 
 import os
@@ -33,7 +33,7 @@ from glob import glob
 
 # ==============================参数区==============================
 # 训练使用到的参数，可加载不同的文件
-args = YamlConfig('../config/MiniLLM-0.2B-WithWudao/pretrain_args.yaml')
+args = YamlConfig('../config/pretrain/MiniLLM-0.2B-WithWudao/pretrain_args.yaml')
 if os.environ.get("RANK") is None:  # 单卡
     args.train_mode = 'single'
 elif argument_parse('deepspeed').deepspeed is not None:  # deepspeed

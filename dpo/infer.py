@@ -17,10 +17,10 @@ args.max_length = 256
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.dir_path = '../config'
 args.config_path = os.path.join(args.dir_path, 'MiniLLM-0.2B-WithWudao-DPO/bert4torch_config.json')
-args.model_path = '../ckpt/MiniLLM-0.2B-WithWudao-DPO/final_1.3085/model.pt'
+args.model_path = '../ckpt/dpo/MiniLLM-0.2B-WithWudao-DPO/final_1.3085/model.pt'
 args.use_peft = True
 
-tokenizer = AutoTokenizer.from_pretrained(args.dir_path, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained('../tokenizer', trust_remote_code=True)
 
 generation_config = {
     'tokenizer_config': {'skip_special_tokens': True, 'add_special_tokens': False},
@@ -69,6 +69,9 @@ class Chat(ChatCli, LLaMA2):
             model = get_peft_model(model, peft_config)
         model.load_weights(args.model_path, mapping=lambda x: x.replace('base_model.model.', ''))
         return model
+
+    def build_tokenizer(self, **kwargs):
+        return tokenizer
 
 
 if __name__ == '__main__':
