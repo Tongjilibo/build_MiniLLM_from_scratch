@@ -13,7 +13,8 @@ import torch
 from bert4torch.snippets import sequence_padding, Timeit, log_info, log_warn
 from bert4torch.snippets import parallel_apply, log_info_once, YamlConfig
 from typing import Literal
-import re
+import pandas as pd
+import pyarrow.parquet as pq
 from tqdm import tqdm
 import os
 import random
@@ -27,7 +28,7 @@ HUMAN = '<human>'  # human标记符
 ROBOT = '<robot>'  # answer标记符
 
 # 多进程参数, linux下可用
-USE_PARALLEL = False if os.name == 'nt' else True
+USE_PARALLEL = False # if os.name == 'nt' else True
 WORKERS = 8 # os.cpu_count(), 根据硬件条件配置
 MAX_QUEUE_SIZE = 2000
 tokenizer = AutoTokenizer.from_pretrained('../tokenizer', trust_remote_code=True)
@@ -53,7 +54,7 @@ def get_samples_count(filenames):
     return total_samples
 
 
-def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='jsonl'):
+def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json', 'table']='jsonl'):
     '''各个函数通用的处理token的方式'''
     def process_data_slice(data_slice, fi):
         # 是否并行处理数据
@@ -80,9 +81,20 @@ def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='
     os.makedirs(args.dataset_save_dir, exist_ok=True)
 
     all_count = 0  # 总的样本量
+    data = None
+    if data_format == 'parquet':
+        df = pq.read_table(data_path).to_pandas()
+        data = [df.loc[i].to_dict() for i in df.index]
+        data_format = 'json'
+    elif data_format == 'table':
+        df = pd.read_table(data_path)
+        data = [df.loc[i].to_dict() for i in df.index]
+        data_format = 'json'
+
     if data_format == 'json':
-        with open(data_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        if data is None:
+            with open(data_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
         if args.max_samples is not None:
             data = data[:args.max_samples]
 
@@ -93,7 +105,7 @@ def collect_tokens(process_one, filename, data_format:Literal['jsonl', 'json']='
             if len(data_slice) == 0:
                 continue
             all_count += process_data_slice(data_slice, fi)
-    else:
+    elif data_format == 'jsonl':
         data = []
         f = open(data_path, 'r', encoding='utf-8')
         fi = 1
@@ -128,7 +140,7 @@ def process_DPO_En_Zh_20k(filename, tokenizer):
     '''hiyouga/DPO-En-Zh-20k'''
 
     def process_one(per):
-        prompt_ids = tokenizer.encode(HUMAN + per['prompt'] + ROBOT, add_special_tokens=False)
+        prompt_ids = tokenizer.encode(HUMAN + per['system'] + per['prompt'] + ROBOT, add_special_tokens=False)
         chosen_ids = tokenizer.encode(per['answer'][0], add_special_tokens=False)
         rejected_ids = tokenizer.encode(per['answer'][1], add_special_tokens=False)
 
@@ -168,10 +180,59 @@ def hh_rlhf_cn(filename, tokenizer):
     return collect_tokens(process_one, filename)
 
 
+def CValues_Comparison(filename, tokenizer):
+    '''diic/CValues-Comparison'''
+    def process_one(per):
+        prompt_ids = tokenizer.encode(HUMAN + per['prompt'] + ROBOT, add_special_tokens=False)
+        chosen_ids = tokenizer.encode(per['pos_resp'], add_special_tokens=False)
+        rejected_ids = tokenizer.encode(per['neg_resp'], add_special_tokens=False)
+
+        if len(prompt_ids) + len(chosen_ids) >= args.MAX_LENGTH or len(prompt_ids) + len(rejected_ids) >= args.MAX_LENGTH:
+            return None, None
+        # 这里labels要比input_ids少1位
+        return prompt_ids, chosen_ids, rejected_ids
+
+    return collect_tokens(process_one, filename, data_format='jsonl')
+
+
+def zhihu_rlhf_3k(filename, tokenizer):
+    '''liyucheng/zhihu_rlhf_3k'''
+    def process_one(per):
+        prompt_ids = tokenizer.encode(HUMAN + per['prompt'] + ROBOT, add_special_tokens=False)
+        chosen_ids = tokenizer.encode(per['chosen'], add_special_tokens=False)
+        rejected_ids = tokenizer.encode(per['rejected'], add_special_tokens=False)
+
+        if len(prompt_ids) + len(chosen_ids) >= args.MAX_LENGTH or len(prompt_ids) + len(rejected_ids) >= args.MAX_LENGTH:
+            return None, None
+        # 这里labels要比input_ids少1位
+        return prompt_ids, chosen_ids, rejected_ids
+
+    return collect_tokens(process_one, filename, data_format='table')
+
+
+def rlhf_reward_single_round_trans_chinese(filename, tokenizer):
+    def process_one(per):
+        prompt_ids = tokenizer.encode(HUMAN + per['prompt'] + ROBOT, add_special_tokens=False)
+        chosen_ids = tokenizer.encode(per['chosen'], add_special_tokens=False)
+        rejected_ids = tokenizer.encode(per['rejected'], add_special_tokens=False)
+
+        if len(prompt_ids) + len(chosen_ids) >= args.MAX_LENGTH or len(prompt_ids) + len(rejected_ids) >= args.MAX_LENGTH:
+            return None, None
+        # 这里labels要比input_ids少1位
+        return prompt_ids, chosen_ids, rejected_ids
+
+    return collect_tokens(process_one, filename, data_format='parquet')
+
+
 MAPPING = {
     'hiyouga@DPO-En-Zh-20k/dpo_zh.json': process_DPO_En_Zh_20k,
     'AI-ModelScope@hh_rlhf_cn/hh_rlhf_train.jsonl': hh_rlhf_cn,
     'AI-ModelScope@hh_rlhf_cn/hh_rlhf_test.jsonl': hh_rlhf_cn,
+    "iic@CValues-Comparison/train.jsonl": CValues_Comparison,
+    "iic@CValues-Comparison/test.jsonl": CValues_Comparison,
+    "liyucheng@zhihu_rlhf_3k/zhihu_3k_rlfh.tsv": zhihu_rlhf_3k,
+    "beyond@rlhf-reward-single-round-trans_chinese/train-00000-of-00001-789dc5dece0f1fc1.parquet": rlhf_reward_single_round_trans_chinese,
+    "beyond@rlhf-reward-single-round-trans_chinese/test-00000-of-00001-8ecd46436fadcf7f.parquet": rlhf_reward_single_round_trans_chinese,
 }
 
 
@@ -236,6 +297,7 @@ def main():
         for filename in args.file_names:
             sample_count = MAPPING[filename](filename, tokenizer)
             ti.lap(name=f'{filename}: len={sample_count}'.ljust(70) + '-', reset=True)
+
 
 if __name__ == '__main__':
     main()

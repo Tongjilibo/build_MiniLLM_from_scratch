@@ -88,7 +88,8 @@ trainer = DPOTrainer(
     net, 
     ref_model=None if args.use_peft else deepcopy(net),
     peft_config=peft_config if args.use_peft else None,
-    trainer_type=trainer_type)
+    trainer_type=trainer_type
+)
 
 
 # ========================配置loss, optimizer等参数========================

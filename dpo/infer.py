@@ -4,7 +4,6 @@ dpo推理,建议单机单卡推理
 
 python infer.py
 """
-import os
 import torch
 from bert4torch.models import build_transformer_model
 from bert4torch.snippets import DottableDict, find_all_linear_names
@@ -12,12 +11,12 @@ from bert4torch.pipelines.chat import ChatCli, LLaMA2
 from transformers import AutoTokenizer
 from data_process import HUMAN, ROBOT
 
+
 args = DottableDict()
 args.max_length = 256
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.dir_path = '../config'
-args.config_path = os.path.join(args.dir_path, 'MiniLLM-0.2B-WithWudao-DPO/bert4torch_config.json')
-args.model_path = '../ckpt/dpo/MiniLLM-0.2B-WithWudao-DPO/final_1.3085/model.pt'
+args.config_path = '../config/dpo/MiniLLM-0.2B-WithWudao-DPO/bert4torch_config.json'
+args.model_path = '../ckpt/dpo/MiniLLM-0.2B-WithWudao-DPO/final_0.5739/model.pt'
 args.use_peft = True
 
 tokenizer = AutoTokenizer.from_pretrained('../tokenizer', trust_remote_code=True)
@@ -67,7 +66,7 @@ class Chat(ChatCli, LLaMA2):
                     int8=getattr(args, 'load_in_8bit', False))
             )
             model = get_peft_model(model, peft_config)
-        model.load_weights(args.model_path, mapping=lambda x: x.replace('base_model.model.', ''))
+        model.load_weights(args.model_path, mapping=lambda x: x.replace('model.base_model.model.', ''))
         return model
 
     def build_tokenizer(self, **kwargs):
@@ -76,5 +75,5 @@ class Chat(ChatCli, LLaMA2):
 
 if __name__ == '__main__':
     # history_maxlen设置保留的历史对话的轮次，需要sft的chat数据集中有多轮对话数据
-    chat = Chat(args.dir_path, generation_config=generation_config, history_maxlen=1)
+    chat = Chat(args.model_path, generation_config=generation_config)
     chat.run()
