@@ -10,7 +10,7 @@ torchrun --standalone --nproc_per_node=4 pretrain.py
 3. 多机多卡训练
 NCCL_DEBUG=INFO TORCH_NCCL_BLOCKING_WAIT=1 NCCL_IB_DISABLE=1 NCCL_SOCKET_IFNAME=你的网卡类型  torchrun --nnodes=你的主机数量 --node_rank=编号 --master_addr=你的master节点IP --master_port=12346 --nproc_per_node=8 pretrain.py
 
-4. deepspeed方式训练
+4. deepspeed方式训练（仅作功能验证，并未实际跑完训练过程）
 deepspeed --num_gpus=1 --master_port $(shuf -n 1 -i 10000-65535) pretrain.py  --deepspeed ../config/pretrain/MiniLLM-0.2B-WithWudao/ds_config.json
 """
 
@@ -40,6 +40,7 @@ elif argument_parse('deepspeed').deepspeed is not None:  # deepspeed
     args.train_mode = 'deepspeed'
 else:  # DDP
     args.train_mode = 'ddp'
+    torch.distributed.init_process_group(backend='nccl')
     BaseModelDDP.init_process_group()
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args.resume_path = None

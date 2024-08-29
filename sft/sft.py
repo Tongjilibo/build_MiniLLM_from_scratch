@@ -37,7 +37,11 @@ filenames = glob(args.dataset_save_dir + '/*.jsonl')
 random.seed(100)  # 必须在init_process_group前更新，保证one_dataset_every_time取到相同的数据集
 random.shuffle(filenames)
 args.filenames = deque(filenames)
-args.ddp_config = BaseModelDDP.init_process_group() if int(os.environ.get("RANK", -1)) != -1 else None
+if int(os.environ.get("RANK", -1)) != -1:
+    torch.distributed.init_process_group(backend='nccl')
+    args.ddp_config = BaseModelDDP.init_process_group()
+else:
+    args.ddp_config = None
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
