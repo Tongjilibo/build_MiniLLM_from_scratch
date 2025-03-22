@@ -1,4 +1,4 @@
-# build_MiniLLM_from_scratch
+![MiniLLM](./docs/pics/MiniLLM.png)
 
 [![licence](https://img.shields.io/github/license/Tongjilibo/build_MiniLLM_from_scratch.svg?maxAge=3600)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/blob/master/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/Tongjilibo/build_MiniLLM_from_scratch?style=social)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch)
@@ -162,7 +162,7 @@ print(response)
 |-------------------------------|--------------------------|---------------------|---------------------|
 | MiniLLM-0.2B-SFT-Alpaca  |✅4万多样本，[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)<br/>✅btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT-Alpaca) |
 | MiniLLM-0.2B-SFT  |✅1157万样本，5.1中全部样本，支持多轮对话样本<br/>✅btz=32; lr=2e-5; 5epoch |  双卡A800，显存60g左右, 耗时4.5d| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT) |
-| zR-Llama-1b-ChatGLM2-6b-tokenizer  |✅全部语料<br/>✅btz=8; lr=2e-5; 5epoch|单卡A800, 耗时 3d 12h|[HuggingFace](https://huggingface.co/zRzRzRzRzRzRzR/zR-Llama-1b-ChatGLM2-6b-tokenizer)
+| MiniLLM-1.1B-SFT  |✅全部语料<br/>✅btz=8; lr=2e-5; 5epoch|单卡A800, 耗时 3d 12h|[HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-SFT)
 
 - loss
 
