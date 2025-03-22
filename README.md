@@ -1,4 +1,4 @@
-![MiniLLM](./docs/pics/minllm.png)
+![MiniLLM](./docs/pics/minillm.png)
 
 [![licence](https://img.shields.io/github/license/Tongjilibo/build_MiniLLM_from_scratch.svg?maxAge=3600)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/blob/master/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/Tongjilibo/build_MiniLLM_from_scratch?style=social)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch)
