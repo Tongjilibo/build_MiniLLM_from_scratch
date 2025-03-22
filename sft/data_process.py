@@ -22,7 +22,7 @@ import numpy as np
 
 
 # ================================数据处理的参数================================
-args = YamlConfig('../config/sft/MiniLLM-0.2B-WithWudao-SFT_Alpaca/sft_args.yaml')['data_process']
+args = YamlConfig('../config/sft/MiniLLM-0.2B-SFT-Alpaca/sft_args.yaml')['data_process']
 HUMAN = '<human>'  # human标记符
 ROBOT = '<robot>'  # answer标记符
 

@@ -3,13 +3,15 @@
 [![licence](https://img.shields.io/github/license/Tongjilibo/build_MiniLLM_from_scratch.svg?maxAge=3600)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/blob/master/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/Tongjilibo/build_MiniLLM_from_scratch?style=social)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch)
 [![GitHub Issues](https://img.shields.io/github/issues/Tongjilibo/build_MiniLLM_from_scratch.svg)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/issues)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Tongjilibo/build_MiniLLM_from_scratch)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/commits/master)
+[![Collection](https://img.shields.io/badge/🤗-MiniLLM%20%20Collection-blue)](https://huggingface.co/collections/Tongjilibo/minillm-67de83f2751c5d81c030fefb)
 [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/issues)
 [![Generic badge](https://img.shields.io/badge/wechat-join-green.svg?logo=wechat)](https://github.com/Tongjilibo/build_MiniLLM_from_scratch/blob/master/docs/pics/wechat_group.jpg)
 
 [Bert4torch](https://github.com/Tongjilibo/bert4torch) |
 [Torch4keras](https://github.com/Tongjilibo/torch4keras)
 
-## 1. 介绍
+## 📌 1. 介绍
 - **初衷**：本项目旨在构建一个小参数量的llm，走完`预训练` -> `指令微调`  -> `奖励模型`  -> `强化学习` 四个阶段，以可控的成本完成一个可以完成简单聊天任务的chat模型，目前完成前两个阶段
 - **特色**: 
   - 使用[bert4torch](https://github.com/Tongjilibo/bert4torch)训练框架，代码简洁高效；
@@ -20,7 +22,7 @@
   - chat模型支持多轮对话
 - **声明**: 本实验训练出来的模型，目前只具备简单的聊天功能（受限于语料大小、模型规模、sft语料大小和质量），不具备回答复杂问题的能力。
 
-## 2. 快速开始
+## 📌 2. 快速开始
 - 环境安装
 ```shell
 pip install git+https://github.com/Tongjilibo/torch4keras.git
@@ -52,12 +54,12 @@ cd docs
 python convert.py
 ```
 
-## 3. 更新历史
-- **20240403**: 增加基于1157万样本训练的[MiniLLM-0.2B-WithWudao-SFT](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT)，支持多轮对话
+## 📌 3. 更新历史
+- **20240403**: 增加基于1157万样本训练的[MiniLLM-0.2B-SFT](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT)，支持多轮对话
 - **20240325**: 增加1.1B模型（源于[zRzRzRzRzRzRzR](https://github.com/zRzRzRzRzRzRzR)）
-- **20240316**: 初始提交，预训练模型`MiniLLM-MiniLLM-0.2B-NoWudao`和`MiniLLM-MiniLLM-0.2B-WithWudao`; SFT模型`MiniLLM-0.2B-WithWudao-SFT_Alpaca`
+- **20240316**: 初始提交，预训练模型`MiniLLM-0.2B-NoWudao-Base`和`MiniLLM-0.2B-Base`; SFT模型`MiniLLM-0.2B-SFT-Alpaca`
 
-## 4. 预训练
+## 📌 4. 预训练
 ### 4.1 预训练语料
 | 中文预训练语料               | 描述                                      |
 |-------------------------|----------------------------------------|
@@ -74,9 +76,9 @@ python convert.py
 
 |预训练权重 | 模型设置                    | 硬件占用和训练时长                       | 下载地址                       |
 |----------------------------|--------------------------|---------------------|---------------------|
-| MiniLLM-0.2B-NoWudao       | ✅140亿 Tokens: Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh<br/>✅btz=32*4gpu; lr=3e-4; warmup_steps=5000; maxlen=1024 | 4×A800(80G), 单卡占用约60G，耗时20h|[百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-NoWudao)|
-| MiniLLM-0.2B-WithWudao       | ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*4gpu; lr=1.5e-4; warmup_steps=5000; maxlen=1024 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用） | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao)|
-| MiniLLM-1.1B-WithWudao| ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*8gpu; lr=1.5e-4; warmup_steps=5000; maxlen=896 |8×A800(80G), 耗时1天| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-WithWudao)|
+| MiniLLM-0.2B-NoWudao-Base       | ✅140亿 Tokens: Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh<br/>✅btz=32*4gpu; lr=3e-4; warmup_steps=5000; maxlen=1024 | 4×A800(80G), 单卡占用约60G，耗时20h|[百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-NoWudao-Base)|
+| MiniLLM-0.2B-Base       | ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*4gpu; lr=1.5e-4; warmup_steps=5000; maxlen=1024 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用） | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-Base)|
+| MiniLLM-1.1B-Base| ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*8gpu; lr=1.5e-4; warmup_steps=5000; maxlen=896 |8×A800(80G), 耗时1天| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-Base)|
 
 - loss记录
 
@@ -92,7 +94,7 @@ from transformers import AutoTokenizer, LlamaForCausalLM
 import torch
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model_name = 'Tongjilibo/MiniLLM-0.2B-WithWudao'  # 'Tongjilibo/MiniLLM-0.2B-NoWudao'
+model_name = 'Tongjilibo/MiniLLM-0.2B-Base'  # 'Tongjilibo/MiniLLM-0.2B-NoWudao-Base'
 
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = LlamaForCausalLM.from_pretrained(model_name).to(device)
@@ -105,7 +107,7 @@ print(response)
 ```
 
 ### 4.4 预训练续写效果
-<details><summary><b>MiniLLM-0.2B-NoWudao</b></summary>
+<details><summary><b>MiniLLM-0.2B-NoWudao-Base</b></summary>
 
 ```shell
 用户：小明学习优异、身体健康、是一名
@@ -121,7 +123,7 @@ print(response)
 ```
 </details>
 
-<details><summary><b>MiniLLM-0.2B-WithWudao</b></summary>
+<details><summary><b>MiniLLM-0.2B-Base</b></summary>
 
 ```shell
 用户：小明学习优异、身体健康、是一名
@@ -136,7 +138,7 @@ print(response)
 ```
 </details>
 
-## 5、指令微调
+## 📌 5、指令微调
 ### 5.1 指令微调语料（筛选的可用数据集）
 | 数据集名称     | 介绍               |
 | ---------------- | -------------------- |
@@ -158,8 +160,8 @@ print(response)
 
 |         权重                  |   模型设置                    | 硬件占用和训练时长                       | 下载地址 |
 |-------------------------------|--------------------------|---------------------|---------------------|
-| MiniLLM-0.2B-WithWudao-SFT_Alpaca  |✅4万多样本，[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)<br/>✅btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca) |
-| MiniLLM-0.2B-WithWudao-SFT  |✅1157万样本，5.1中全部样本，支持多轮对话样本<br/>✅btz=32; lr=2e-5; 5epoch |  双卡A800，显存60g左右, 耗时4.5d| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-WithWudao-SFT) |
+| MiniLLM-0.2B-SFT-Alpaca  |✅4万多样本，[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)<br/>✅btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT-Alpaca) |
+| MiniLLM-0.2B-SFT  |✅1157万样本，5.1中全部样本，支持多轮对话样本<br/>✅btz=32; lr=2e-5; 5epoch |  双卡A800，显存60g左右, 耗时4.5d| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT) |
 | zR-Llama-1b-ChatGLM2-6b-tokenizer  |✅全部语料<br/>✅btz=8; lr=2e-5; 5epoch|单卡A800, 耗时 3d 12h|[HuggingFace](https://huggingface.co/zRzRzRzRzRzRzR/zR-Llama-1b-ChatGLM2-6b-tokenizer)
 
 - loss
@@ -187,7 +189,7 @@ from transformers import AutoTokenizer, LlamaForCausalLM
 import torch
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model_name = 'Tongjilibo/MiniLLM-0.2B-WithWudao-SFT_Alpaca'
+model_name = 'Tongjilibo/MiniLLM-0.2B-SFT-Alpaca'
 
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = LlamaForCausalLM.from_pretrained(model_name).to(device)
@@ -202,7 +204,7 @@ print(response)
 
 ### 5.4 指令微调Chat效果
 
-<details><summary><b>MiniLLM-0.2B-WithWudao-SFT_Alpaca</b></summary>
+<details><summary><b>MiniLLM-0.2B-SFT-Alpaca</b></summary>
 
 ```shell
 User：你好
@@ -229,7 +231,7 @@ Assistant：如果你想要制作一个番茄炒蛋，那么下面这些步骤�
 ```
 </details>
 
-<details><summary><b>MiniLLM-0.2B-WithWudao-SFT</b></summary>
+<details><summary><b>MiniLLM-0.2B-SFT</b></summary>
 
 ```shell
 User：你好
@@ -280,7 +282,7 @@ Assistant：我叫露露。谢谢关心！
 ```
 </details>
 
-## 6、对齐模型(DPO) 还在测试阶段
+## 📌 6、对齐模型(DPO) 还在测试阶段
 ### 6.1 DPO 语料（筛选的可用数据集）
 | 数据集名称     | 介绍               |
 | ---------------- | -------------------- |
@@ -294,14 +296,14 @@ Assistant：我叫露露。谢谢关心！
 ### 6.3 DPO 模型调用
 ### 6.4 DPO Chat效果
 
-## 7. Todo
+## 📌 7. Todo
 - ❎ 对齐模型
 
-## 8. 鸣谢
+## 📌 8. 鸣谢
 
 - 感谢[baby-llama2-chinese](https://github.com/DLLXW/baby-llama2-chinese)，本实现有不少地方参考该项目
 
-## 9. 引用
+## 📌 9. 引用
 
 ```
 @misc{build_MiniLLM_from_scratch,
@@ -312,7 +314,7 @@ Assistant：我叫露露。谢谢关心！
 }
 ```
 
-## 10. 其他
+## 📌 10. 其他
 
 - Wechat & Star History Chart
 - 微信群人数超过200个（有邀请限制），可添加个人微信拉群

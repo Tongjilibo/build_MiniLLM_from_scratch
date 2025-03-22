@@ -15,8 +15,8 @@ from data_process import HUMAN, ROBOT
 args = DottableDict()
 args.max_length = 256
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/dpo/MiniLLM-0.2B-WithWudao-DPO/bert4torch_config.json'
-args.model_path = '../ckpt/dpo/MiniLLM-0.2B-WithWudao-DPO/final_0.5739/model.pt'
+args.config_path = '../config/dpo/MiniLLM-0.2B-DPO/bert4torch_config.json'
+args.model_path = '../ckpt/dpo/MiniLLM-0.2B-DPO/final_0.5739/model.pt'
 args.use_peft = True
 
 tokenizer = AutoTokenizer.from_pretrained('../tokenizer', trust_remote_code=True)

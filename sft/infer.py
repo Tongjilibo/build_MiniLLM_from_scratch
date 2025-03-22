@@ -8,15 +8,15 @@ import os
 import torch
 from bert4torch.models import build_transformer_model
 from bert4torch.snippets import DottableDict
-from bert4torch.pipelines.chat import ChatCli, LLaMA2
+from bert4torch.pipelines.chat.llm import ChatCli, LLaMA2
 from transformers import AutoTokenizer
 from data_process import HUMAN, ROBOT
 
 args = DottableDict()
 args.max_length = 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/sft/MiniLLM-0.2B-WithWudao-SFT/bert4torch_config.json'
-args.model_path = '../ckpt/sft/MiniLLM-0.2B-WithWudao-SFT/final_2.1458/model.pt'
+args.config_path = '../config/sft/MiniLLM-0.2B-SFT/bert4torch_config.json'
+args.model_path = '../ckpt/sft/MiniLLM-0.2B-SFT/final_2.1458/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained('../tokenizer', trust_remote_code=True)
 

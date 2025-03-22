@@ -1,1 +1,2 @@
-bert4torch==0.5.3
+bert4torch==0.5.5
+transformers==4.44.0

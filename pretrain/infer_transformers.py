@@ -13,10 +13,10 @@ from threading import Thread
 max_length = 1024
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # pretrained_model_name_or_path：预训练模型的本地路径或model_name(连接huggingface下载)
-# Tongjilibo/MiniLLM-0.2B-NoWudao
-# Tongjilibo/MiniLLM-0.2B-WithWudao
-# Tongjilibo/MiniLLM-1.1B-WithWudao
-pretrained_model_name_or_path = '../ckpt/pretrain/MiniLLM-0.2B-WithWudao/final_transformers'
+# Tongjilibo/MiniLLM-0.2B-NoWudao-Base
+# Tongjilibo/MiniLLM-0.2B-Base
+# Tongjilibo/MiniLLM-1.1B-Base
+pretrained_model_name_or_path = '../ckpt/pretrain/MiniLLM-0.2B-Base/final_transformers'
 
 tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path, trust_remote_code=True)
 model = LlamaForCausalLM.from_pretrained(pretrained_model_name_or_path).to(device)

@@ -8,9 +8,9 @@ from bert4torch.snippets import copytree
 import shutil
 
 # 路径设置
-config_path = '../config/pretrain/MiniLLM-0.2B-WithWudao/bert4torch_config.json'
-model_path = '../ckpt/pretrain/MiniLLM-0.2B-WithWudao/final_3.1822/model.pt'
-save_dir = '../ckpt/pretrain/MiniLLM-0.2B-WithWudao/final_transformers'
+config_path = '../config/pretrain/MiniLLM-0.2B-Base/bert4torch_config.json'
+model_path = '../ckpt/pretrain/MiniLLM-0.2B-Base/final_3.1822/model.pt'
+save_dir = '../ckpt/pretrain/MiniLLM-0.2B-Base/final_transformers'
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir, exist_ok=True)

@@ -1,26 +1,25 @@
 sft:
-  one_dataset_every_time: true  # false表示一次把所有sft数据吃进内存，true表示一次只使用一个dataset
+  one_dataset_every_time: false  # false表示一次把所有sft数据吃进内存，true表示一次只使用一个dataset
   lr: 0.00002  # 学习率
-  batch_size: 32  # 每张卡的batch size
+  batch_size: 8  # 每张卡的batch size
   grad_accumulation_steps: 1  # 梯度累计
   pad_token_id: 0  # pad token id
-  max_length: 1024   # 序列最大长度
+  max_length: 896   # 序列最大长度
   epochs: 5  # 训练的epoch数
   weight_decay: 0.1  # 权重衰减
   interval: 2000  # 保存权重的步数
   torch_dtype: null  # 默认使用混合精度训练，可以制定为torch.float32，torch.float16或者torch.bfloat16
-  model_path: "../ckpt/pretrain/MiniLLM-0.2B-WithWudao/final/model.pt"  # 预训练模型权重路径
-  config_path: "../config/sft/MiniLLM-0.2B-WithWudao-SFT/bert4torch_config.json"  # 预训练模型权重config
-  save_dir: "../ckpt/sft/MiniLLM-0.2B-WithWudao-SFT"  # 模型ckpt保存路径
+  model_path: "../ckpt/pretrain/MiniLLM-1.1B-Base/final/model.pt"  # 预训练模型权重路径
+  config_path: "../config/pretrain/MiniLLM-1.1B-Base/bert4torch_config.json"  # 预训练模型权重config
+  save_dir: "../ckpt/sft/MiniLLM-1.1B-Base-SFT"  # 模型ckpt保存路径
   dataset_save_dir: "../data/sft_data"  # sft的训练数据所在路径
 
 data_process:
-  MAX_LENGTH: 1024  # 序列最大长度
+  MAX_LENGTH: 896  # 序列最大长度
   pad_token_id: 0  # pad_token_id
   eos_token_id: 2  # eos_token_id
-  dataset_src_dir: "/home/hfai/h01305/data/corpus/sft/common/"  # sft语料所在路径
+  dataset_src_dir: "/data/corpus/sft/common/"  # sft语料所在路径
   file_names: [
-          "Tongjilibo/self_cognition.json",
           "alpaca-zh/alpaca_gpt4_data_zh.json",
           "BelleGroup/Belle_open_source_0.5M.json",
           "BelleGroup/Belle_open_source_1M.json",
@@ -41,6 +40,3 @@ data_process:
   dataset_save_dir: "../data/sft_data"  # 处理好的文件存储路径
   max_samples: null  # None表示不限制，不为None用于测试小样本快速验证
   max_samples_per_file: 100000  # 每个文件最多能容纳的样本量，用于切分大文件
-  name: MiniLLM  # 机器人名字
-  author: Tongjilibo  # 机器人作者
-  date: 2024年  # 机器人训练时间
