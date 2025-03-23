@@ -11,6 +11,8 @@
 [Bert4torch](https://github.com/Tongjilibo/bert4torch) |
 [Torch4keras](https://github.com/Tongjilibo/torch4keras)
 
+![demo](./docs/pics/gradio_demo.gif)
+
 ## 📌 1. 介绍
 - **初衷**：本项目旨在构建一个小参数量的llm，走完`预训练` -> `指令微调`  -> `奖励模型`  -> `强化学习` 四个阶段，以可控的成本完成一个可以完成简单聊天任务的chat模型，目前完成前两个阶段
 - **特色**: 
@@ -21,6 +23,20 @@
   - 增加自我认知数据集，可自定义机器人名称作者等属性。
   - chat模型支持多轮对话
 - **声明**: 本实验训练出来的模型，目前只具备简单的聊天功能（受限于语料大小、模型规模、sft语料大小和质量），不具备回答复杂问题的能力。
+
+<details style="color:rgb(128,128,128)">
+<summary>Models List</summary>
+
+| 模型             | 类型 | Release Date    | 
+|-------------------------|----------|------------|
+| MiniLLM-1.1B-SFT      | 指令微调   | 2024.03.25 |
+| MiniLLM-1.1B-Base        | 预训练   | 2024.03.25 |
+| MiniLLM-0.2B-SFT | 指令微调   | 2024.03.16 |
+| MiniLLM-0.2B-SFT-Alpaca | 指令微调   | 2024.03.16 |
+| MiniLLM-0.2B-Base    | 预训练   | 2025.03.16 |
+| MiniLLM-0.2B-NoWudao-Base   | 预训练   | 2025.03.16 |
+
+</details>
 
 ## 📌 2. 快速开始
 - 环境安装
@@ -74,11 +90,11 @@ python convert.py
 ### 4.2 预训练权重和过程
 - 预训练细节
 
-|预训练权重 | 模型设置                    | 硬件占用和训练时长                       | 下载地址                       |
-|----------------------------|--------------------------|---------------------|---------------------|
-| MiniLLM-0.2B-NoWudao-Base       | ✅140亿 Tokens: Wiki中文百科、BaiduBaiKe、hibing624/medical、C4_zh<br/>✅btz=32*4gpu; lr=3e-4; warmup_steps=5000; maxlen=1024 | 4×A800(80G), 单卡占用约60G，耗时20h|[百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-NoWudao-Base)|
-| MiniLLM-0.2B-Base       | ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*4gpu; lr=1.5e-4; warmup_steps=5000; maxlen=1024 |✅ 4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅ baby-llama2项目2×4090，耗时26d<br/>✅ 个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用） | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-Base)|
-| MiniLLM-1.1B-Base| ✅640亿 Tokens: Wiki中文百科、BaiduBaiKe、shibing624/medical、C4_zh、WuDaoCorpora<br/>✅btz=32*8gpu; lr=1.5e-4; warmup_steps=5000; maxlen=896 |8×A800(80G), 耗时1天| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-Base)|
+|预训练权重 | 语料 | 模型参数                    | 硬件占用和训练时长                       | 下载地址                       |
+|----------------------------|----------------------------|--------------------------|---------------------|---------------------|
+| MiniLLM-0.2B-NoWudao-Base       | 👉140亿 Tokens<br/>✅Wiki中文百科<br/>✅BaiduBaiKe<br/>✅shibing624/medical<br/>✅C4_zh|✅btz=32*4gpu<br/>✅lr=3e-4<br/>✅warmup_steps=5000<br/>✅maxlen=1024 | ✅4×A800(80G), 单卡占用约60G，耗时20h|[百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-NoWudao-Base)|
+| MiniLLM-0.2B-Base       | 👉640亿 Tokens<br/>✅Wiki中文百科<br/>✅BaiduBaiKe<br/>✅shibing624/medical<br/>✅C4_zh<br/>✅WuDaoCorpora | ✅btz=32*4gpu<br/>✅lr=1.5e-4<br/>✅warmup_steps=5000<br/>✅maxlen=1024 |✅4×A800(80G), 单卡占用约60G，耗时3.79d<br/>✅baby-llama2项目2×4090，耗时26d<br/>✅个人测试单卡btz=8下, gpu占用约17G，时长未知（可配合梯度累计进一步降低占用） | [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-Base)|
+| MiniLLM-1.1B-Base| 👉640亿 Tokens<br/>✅Wiki中文百科<br/>✅BaiduBaiKe<br/>✅shibing624/medical<br/>✅C4_zh<br/>✅WuDaoCorpora | ✅btz=32*8gpu<br/>✅lr=1.5e-4<br/>✅warmup_steps=5000<br/>✅maxlen=896 | ✅8×A800(80G), 耗时1天| [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-Base)|
 
 - loss记录
 
@@ -158,11 +174,11 @@ print(response)
 ### 5.2 指令微调权重和过程
 - 指令微调细节
 
-|         权重                  |   模型设置                    | 硬件占用和训练时长                       | 下载地址 |
-|-------------------------------|--------------------------|---------------------|---------------------|
-| MiniLLM-0.2B-SFT-Alpaca  |✅4万多样本，[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh)<br/>✅btz=8; lr=2e-5; 5epoch |  单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT-Alpaca) |
-| MiniLLM-0.2B-SFT  |✅1157万样本，5.1中全部样本，支持多轮对话样本<br/>✅btz=32; lr=2e-5; 5epoch |  双卡A800，显存60g左右, 耗时4.5d| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT) |
-| MiniLLM-1.1B-SFT  |✅全部语料<br/>✅btz=8; lr=2e-5; 5epoch|单卡A800, 耗时 3d 12h|[HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-SFT)
+|         权重                  |   语料 | 参数设置                    | 硬件占用和训练时长                       | 下载地址 |
+|-------------------------------|--------------------------|--------------------------|---------------------|---------------------|
+| MiniLLM-0.2B-SFT-Alpaca  |👉4万多样本<br/>✅[shibing624/alpaca-zh](https://huggingface.co/datasets/shibing624/alpaca-zh) | ✅btz=8<br/>✅lr=2e-5<br/>✅epoch=5 |  ✅单卡4090，显存17G, 耗时45min| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT-Alpaca) |
+| MiniLLM-0.2B-SFT  |👉1157万样本<br/>✅5.1中全部样本 | ✅btz=32<br/>✅lr=2e-5<br/>✅epoch=5 |✅双卡A800，显存60g左右, 耗时4.5d| [百度网盘](https://pan.baidu.com/s/1ixjSR3IW9YXRhQ08RX-lMQ?pwd=lrj5), [HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-0.2B-SFT) |
+| MiniLLM-1.1B-SFT  |👉全部语料<br/>✅5.1中全部样本 | ✅btz=8<br/>✅lr=2e-5<br/>✅epoch=5|✅单卡A800, 耗时 3d 12h|[HuggingFace](https://huggingface.co/Tongjilibo/MiniLLM-1.1B-SFT)
 
 - loss
 

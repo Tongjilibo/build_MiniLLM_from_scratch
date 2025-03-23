@@ -9,8 +9,8 @@ from data_process import HUMAN, ROBOT
 args = DottableDict()
 args.max_length = 1024
 args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-args.config_path = '../config/sft/MiniLLM-0.2B-SFT/bert4torch_config.json'
-args.model_path = '../ckpt/sft/MiniLLM-0.2B-SFT/final_2.1458/model.pt'
+args.config_path = '../config/sft/MiniLLM-1.1B-SFT/bert4torch_config.json'
+args.model_path = '../ckpt/sft/MiniLLM-1.1B-SFT/final/model.pt'
 
 tokenizer = AutoTokenizer.from_pretrained('../tokenizer', trust_remote_code=True)
 
